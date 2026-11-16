@@ -996,19 +996,19 @@ function makeBumpCanvas(size, drawFn) {
 
 // Sediment Albedo & Normal Map
 const sedimentAlbedoCanvas = document.createElement('canvas');
-sedimentAlbedoCanvas.width = sedimentAlbedoCanvas.height = 512;
+sedimentAlbedoCanvas.width = sedimentAlbedoCanvas.height = 256;
 {
   const ctx = sedimentAlbedoCanvas.getContext('2d');
-  const img = ctx.createImageData(512, 512);
-  for (let y = 0; y < 512; y++) {
-    for (let x = 0; x < 512; x++) {
-      const u = x / 512, v = y / 512;
+  const img = ctx.createImageData(256, 256);
+  for (let y = 0; y < 256; y++) {
+    for (let x = 0; x < 256; x++) {
+      const u = x / 256, v = y / 256;
       const n = fbm(u * 12, v * 12, 1.7, 3);
       const ripple = Math.sin((u * 16 + n * 1.4) * Math.PI * 2) * 0.08;
       const grain = (rnd() - 0.5) * 0.14;
       const speck = rnd() > 0.992 ? 0.25 : 0; // foraminifera shell bits
       const lum = Math.max(0.28, Math.min(0.95, 0.56 + n * 0.18 + ripple + grain + speck));
-      const idx = (y * 512 + x) * 4;
+      const idx = (y * 256 + x) * 4;
       img.data[idx]     = Math.round(lum * 228);
       img.data[idx + 1] = Math.round(lum * 218);
       img.data[idx + 2] = Math.round(lum * 194);
@@ -1016,6 +1016,7 @@ sedimentAlbedoCanvas.width = sedimentAlbedoCanvas.height = 512;
     }
   }
   ctx.putImageData(img, 0, 0);
+  seed = 1799881025; // Preserve deterministic PRNG state from original 512x512 pass
 }
 const sedimentAlbedo = new THREE.CanvasTexture(sedimentAlbedoCanvas);
 sedimentAlbedo.wrapS = sedimentAlbedo.wrapT = THREE.RepeatWrapping;
@@ -1163,10 +1164,12 @@ for (const side of [-1, 1]) {
   const light = new THREE.SpotLight(0xf6f3e4, 1150, 72, 0.54, 0.82, 2);
   light.position.set(side * 0.82, -0.32, 0.15);
   light.target.position.set(side * 2.1, -6.5, -30);
-  light.castShadow = true;
-  light.shadow.mapSize.set(1024, 1024);
-  light.shadow.bias = -0.00025;
-  light.shadow.normalBias = 0.04;
+  light.castShadow = side === -1;
+  if (side === -1) {
+    light.shadow.mapSize.set(1024, 1024);
+    light.shadow.bias = -0.00025;
+    light.shadow.normalBias = 0.04;
+  }
   camera.add(light, light.target);
   lamps.push(light);
 
@@ -1354,8 +1357,9 @@ const microFaunaSway = [];
     emissive: 0x0d2b30,
     emissiveIntensity: 0.25,
     roughness: 0.35,
-    transmission: 0.45,
-    thickness: 0.4,
+    clearcoat: 0.6,
+    transparent: true,
+    opacity: 0.78,
     wireframe: false
   });
   const spongeBaseGeo = new THREE.CylinderGeometry(0.16, 0.11, 1.35, 14, 8, true);
@@ -1734,15 +1738,12 @@ function buildJellyfish(paletteIdx = 0) {
     emissiveIntensity: 0.72,
     roughness: 0.14,
     metalness: 0.0,
-    transmission: 0.72,
-    thickness: 0.85,
-    ior: 1.38,
     iridescence: 0.88,
     iridescenceIOR: 1.33,
     clearcoat: 1.0,
     clearcoatRoughness: 0.1,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.74,
     side: THREE.DoubleSide,
     bumpMap: jellyBumpTex,
     bumpScale: 0.025
@@ -1844,7 +1845,8 @@ function buildJellyfish(paletteIdx = 0) {
     animatedTubes.push({ mesh: tent, phase: a * 1.5 + i * 0.4, amp: 0.22, freq: 2.8 });
   }
 
-  group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  bell.castShadow = true;
+  bell.receiveShadow = true;
 
   group.userData.animate = (time, dt, capturePulse = 0) => {
     const swim = Math.sin(time * 2.3);
@@ -1901,12 +1903,9 @@ function buildSquid() {
     emissive: 0x450b29,
     emissiveIntensity: 0.6,
     roughness: 0.22,
-    transmission: 0.55,
-    thickness: 0.75,
-    ior: 1.37,
     clearcoat: 0.85,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.82,
     side: THREE.DoubleSide
   });
   const mantle = new THREE.Mesh(mantleGeo, mantleMat);
@@ -2017,7 +2016,9 @@ function buildSquid() {
     arms.push({ mesh: tent, phase: side * 1.2, amp: 0.24, freq: 3.6 });
   }
 
-  group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  mantle.castShadow = true;
+  mantle.receiveShadow = true;
+  head.castShadow = true;
 
   group.userData.animate = (time, dt, capturePulse = 0) => {
     const jet = Math.pow(Math.max(0, Math.sin(time * 2.6)), 2.0);
@@ -2074,14 +2075,23 @@ function getBarramundiBase() {
   const pos = new Float32Array(buf.slice(78768, 78768 + 26256));
   const idx = new Uint16Array(buf.slice(105024, 105024 + 23184));
 
-  // Center vertically & scale to ~2.35 world units
+  // Center vertically & scale to ~2.35 world units and precompute tail wave amplitudes
   const scale = 3.6;
+  const tailWaveAmp = new Float32Array(vCount);
   for (let i = 0; i < vCount; i++) {
     pos[i * 3]     *= scale;
     pos[i * 3 + 1]  = (pos[i * 3 + 1] - 0.143) * scale;
     pos[i * 3 + 2] *= scale;
+    const tailFactor = Math.max(0, (pos[i * 3 + 2] + 0.85) / 2.02);
+    tailWaveAmp[i] = 0.13 * Math.pow(tailFactor, 1.35);
   }
-  cachedFishBase = { uv, norm, pos, idx };
+  cachedFishBase = {
+    pos,
+    tailWaveAmp,
+    normAttr: new THREE.BufferAttribute(norm, 3),
+    uvAttr: new THREE.BufferAttribute(uv, 2),
+    idxAttr: new THREE.BufferAttribute(idx, 1)
+  };
   return cachedFishBase;
 }
 
@@ -2114,10 +2124,9 @@ function buildFish() {
   const geo = new THREE.BufferGeometry();
   const posCopy = new Float32Array(base.pos);
   geo.setAttribute('position', new THREE.BufferAttribute(posCopy, 3));
-  geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(base.norm), 3));
-  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(base.uv), 2));
-  geo.setIndex(new THREE.BufferAttribute(new Uint16Array(base.idx), 1));
-  geo.userData.restPos = new Float32Array(posCopy);
+  geo.setAttribute('normal', base.normAttr);
+  geo.setAttribute('uv', base.uvAttr);
+  geo.setIndex(base.idxAttr);
 
   const mat = new THREE.MeshStandardMaterial({
     color: 0xb6cfdc,
@@ -2158,20 +2167,20 @@ function buildFish() {
     }
   }
 
+  const tailWaveAmp = base.tailWaveAmp;
+  const rest = base.pos;
   group.userData.animate = (time, dt, capturePulse = 0, speedFactor = 1) => {
     const pos = geo.attributes.position;
-    const rest = geo.userData.restPos;
     const arr = pos.array;
     const freq = 4.2 + speedFactor * 1.5;
-    for (let i = 0; i < pos.count; i++) {
-      const j = i * 3;
-      const rx = rest[j], ry = rest[j + 1], rz = rest[j + 2];
-      // Raw mesh: head at -1.14, tail at +1.17
-      const tailFactor = Math.max(0, (rz + 0.85) / 2.02);
-      const wave = Math.sin(time * freq - rz * 3.1) * 0.13 * Math.pow(tailFactor, 1.35);
-      arr[j]     = rx + wave;
-      arr[j + 1] = ry;
-      arr[j + 2] = rz;
+    const timeFreq = time * freq;
+    const count = pos.count;
+    for (let i = 0; i < count; i++) {
+      const amp = tailWaveAmp[i];
+      if (amp > 0) {
+        const j = i * 3;
+        arr[j] = rest[j] + Math.sin(timeFreq - rest[j + 2] * 3.1) * amp;
+      }
     }
     pos.needsUpdate = true;
     photoMat.emissiveIntensity = 1.25 + Math.sin(time * 3.0) * 0.35 + capturePulse * 1.5;
@@ -2207,9 +2216,43 @@ function getWhaleBase() {
     uv: new Float32Array(decodeB64Bytes(part.uvB64).buffer),
     idx: new Uint16Array(decodeB64Bytes(part.idxB64).buffer)
   });
+  const wPart = unpack(data.whale);
+  const wPos = wPart.pos;
+  const vCount = wPos.length / 3;
+  const activeIndices = [];
+  const activeRestYList = [];
+  const activeZList = [];
+  const activeWeightList = [];
+  for (let i = 0; i < vCount; i++) {
+    const rz = wPos[i * 3 + 2];
+    if (rz < 1.2) {
+      const tailFactor = (1.2 - rz) / 9.55;
+      activeIndices.push(i * 3 + 1);
+      activeRestYList.push(wPos[i * 3 + 1]);
+      activeZList.push(rz);
+      activeWeightList.push(Math.pow(tailFactor, 1.7) * 0.85);
+    }
+  }
+
+  const bPart = unpack(data.baleen);
+  const baleenGeo = new THREE.BufferGeometry();
+  baleenGeo.setAttribute('position', new THREE.BufferAttribute(bPart.pos, 3));
+  baleenGeo.setAttribute('normal', new THREE.BufferAttribute(bPart.norm, 3));
+  baleenGeo.setAttribute('uv', new THREE.BufferAttribute(bPart.uv, 2));
+  baleenGeo.setIndex(new THREE.BufferAttribute(bPart.idx, 1));
+
   cachedWhaleBase = {
-    whale: unpack(data.whale),
-    baleen: unpack(data.baleen)
+    whale: {
+      pos: wPos,
+      normAttr: new THREE.BufferAttribute(wPart.norm, 3),
+      uvAttr: new THREE.BufferAttribute(wPart.uv, 2),
+      idxAttr: new THREE.BufferAttribute(wPart.idx, 1),
+      activeIdx: new Uint32Array(activeIndices),
+      activeRestY: new Float32Array(activeRestYList),
+      activeZ: new Float32Array(activeZList),
+      activeWeight: new Float32Array(activeWeightList)
+    },
+    baleenGeo
   };
   return cachedWhaleBase;
 }
@@ -2239,19 +2282,15 @@ function buildWhale() {
   const group = new THREE.Group();
   const base = getWhaleBase();
   const tex = getWhaleTextures();
+  const w = base.whale;
 
-  const makeGeo = part => {
-    const g = new THREE.BufferGeometry();
-    const posCopy = new Float32Array(part.pos);
-    g.setAttribute('position', new THREE.BufferAttribute(posCopy, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(part.norm), 3));
-    g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(part.uv), 2));
-    g.setIndex(new THREE.BufferAttribute(new Uint16Array(part.idx), 1));
-    g.userData.restPos = new Float32Array(posCopy);
-    return g;
-  };
+  const bodyGeo = new THREE.BufferGeometry();
+  const posCopy = new Float32Array(w.pos);
+  bodyGeo.setAttribute('position', new THREE.BufferAttribute(posCopy, 3));
+  bodyGeo.setAttribute('normal', w.normAttr);
+  bodyGeo.setAttribute('uv', w.uvAttr);
+  bodyGeo.setIndex(w.idxAttr);
 
-  const bodyGeo = makeGeo(base.whale);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0x788e8a,
     emissive: 0x0a2420,
@@ -2267,7 +2306,6 @@ function buildWhale() {
   bodyMesh.receiveShadow = true;
   group.add(bodyMesh);
 
-  const baleenGeo = makeGeo(base.baleen);
   const baleenMat = new THREE.MeshStandardMaterial({
     color: 0x7a7366,
     emissive: 0x081a17,
@@ -2276,26 +2314,21 @@ function buildWhale() {
     roughness: 0.78,
     side: THREE.DoubleSide
   });
-  const baleenMesh = new THREE.Mesh(baleenGeo, baleenMat);
+  const baleenMesh = new THREE.Mesh(base.baleenGeo, baleenMat);
   group.add(baleenMesh);
 
+  const { activeIdx, activeRestY, activeZ, activeWeight } = w;
+  const activeCount = activeIdx.length;
   group.userData.animate = (time, dt, capturePulse = 0, speedFactor = 1) => {
     const pos = bodyGeo.attributes.position;
-    const rest = bodyGeo.userData.restPos;
     const arr = pos.array;
     const freq = 1.45 * speedFactor;
-    for (let i = 0; i < pos.count; i++) {
-      const j = i * 3;
-      const rx = rest[j], ry = rest[j + 1], rz = rest[j + 2];
-      // Snout at +7.48, tail flukes at -8.35: animate vertical fluke stroke on posterior half
-      const tailFactor = Math.max(0, (1.2 - rz) / 9.55);
-      const stroke = Math.sin(time * freq - rz * 0.32) * Math.pow(tailFactor, 1.7) * 0.85;
-      arr[j]     = rx;
-      arr[j + 1] = ry + stroke;
-      arr[j + 2] = rz;
+    const timeFreq = time * freq;
+    for (let k = 0; k < activeCount; k++) {
+      arr[activeIdx[k]] = activeRestY[k] + Math.sin(timeFreq - activeZ[k] * 0.32) * activeWeight[k];
     }
     pos.needsUpdate = true;
-    bodyMesh.rotation.x = Math.cos(time * freq) * 0.025;
+    bodyMesh.rotation.x = Math.cos(timeFreq) * 0.025;
     baleenMesh.rotation.x = bodyMesh.rotation.x;
     bodyMat.emissiveIntensity = 0.28 + capturePulse * 0.4;
   };
@@ -2377,8 +2410,8 @@ function buildCoral() {
     emissive: 0x3b1216,
     emissiveIntensity: 0.25,
     roughness: 0.32,
-    transmission: 0.35,
-    thickness: 0.2
+    transparent: true,
+    opacity: 0.88
   });
   const tentacleMat = new THREE.MeshStandardMaterial({
     color: 0xfbe2dd,
@@ -2436,7 +2469,10 @@ function buildCoral() {
     polyps.push({ polyp, inner, arms, phase: i * 0.7, basePos: polyp.position.clone(), normal });
   }
 
-  group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  stem.castShadow = true;
+  stem.receiveShadow = true;
+  cap.castShadow = true;
+  cap.receiveShadow = true;
 
   group.userData.animate = (time, dt, capturePulse = 0) => {
     const retract = capturePulse > 0.15 ? Math.sin(Math.min(1, capturePulse) * Math.PI) * 0.65 : 0;
@@ -2527,7 +2563,16 @@ function buildStarfish() {
   bodyGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   bodyGeo.setIndex(indices);
   bodyGeo.computeVertexNormals();
-  bodyGeo.userData.restPos = new Float32Array(bodyGeo.attributes.position.array);
+  const restPos = new Float32Array(bodyGeo.attributes.position.array);
+  const posCount = bodyGeo.attributes.position.count;
+  const armLiftFactor = new Float32Array(posCount);
+  const armDoubleAngle = new Float32Array(posCount);
+  for (let i = 0; i < posCount; i++) {
+    const j = i * 3;
+    const rx = restPos[j], rz = restPos[j + 2];
+    armLiftFactor[i] = Math.max(0, Math.hypot(rx, rz) - 0.85);
+    armDoubleAngle[i] = Math.atan2(rz, rx) * 2;
+  }
 
   const bodyMat = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
@@ -2570,23 +2615,23 @@ function buildStarfish() {
   }
   group.add(ossicles);
 
-  group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  body.castShadow = true;
+  body.receiveShadow = true;
 
   group.userData.animate = (time, dt, capturePulse = 0) => {
     const pos = bodyGeo.attributes.position;
-    const rest = bodyGeo.userData.restPos;
     const arr = pos.array;
     const curlBoost = capturePulse * 0.24;
-    for (let i = 0; i < pos.count; i++) {
-      const j = i * 3;
-      const rx = rest[j], ry = rest[j + 1], rz = rest[j + 2];
-      const d = Math.hypot(rx, rz);
-      const th = Math.atan2(rz, rx);
-      const lift = Math.max(0, d - 0.85) * (Math.sin(time * 1.1 + th * 2) * 0.035 + curlBoost);
-      arr[j + 1] = ry + lift;
+    const tBase = time * 1.1;
+    for (let i = 0; i < posCount; i++) {
+      const f = armLiftFactor[i];
+      if (f > 0) {
+        const j = i * 3;
+        arr[j + 1] = restPos[j + 1] + f * (Math.sin(tBase + armDoubleAngle[i]) * 0.035 + curlBoost);
+      }
     }
     pos.needsUpdate = true;
-    ossicles.position.y = Math.sin(time * 1.1) * 0.01 + curlBoost * 0.25;
+    ossicles.position.y = Math.sin(tBase) * 0.01 + curlBoost * 0.25;
   };
   return group;
 }
@@ -2625,11 +2670,10 @@ function buildCucumber() {
     emissive: 0x260c1b,
     emissiveIntensity: 0.3,
     roughness: 0.22,
-    transmission: 0.52,
-    thickness: 0.9,
-    ior: 1.36,
     clearcoat: 0.82,
     clearcoatRoughness: 0.18,
+    transparent: true,
+    opacity: 0.82,
     bumpMap: cucumberBumpTex,
     bumpScale: 0.032
   });
@@ -2697,7 +2741,8 @@ function buildCucumber() {
   }
   group.add(tentacleGroup);
 
-  group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  body.castShadow = true;
+  body.receiveShadow = true;
 
   group.userData.animate = (time, dt, capturePulse = 0) => {
     const pos = bodyGeo.attributes.position;
@@ -3140,26 +3185,55 @@ let statusUntil = 0;
 
 const TOTAL_SPECIES = Object.keys(SPECIES_DATA).length;
 
-function telemetry() {
+const hudEls = {
+  depth: $('#depth'),
+  alt: $('#alt'),
+  heading: $('#heading'),
+  light: $('#light'),
+  count: $('#count'),
+  temp: $('#temp'),
+  zoneLabel: $('#zone-label'),
+  sonarHint: $('#sonar-hint'),
+  status: $('#status'),
+  reticle: $('#reticle'),
+  retName: $('#ret-name'),
+  retMeta: $('#ret-meta'),
+  retAction: $('#ret-action'),
+  lamp: $('#lamp'),
+  audioBtn: $('#audioBtn'),
+  audioBtn2: $('#audioBtn2'),
+  flash: $('#flash-overlay')
+};
+
+function setText(el, text) {
+  if (el._lastText !== text) {
+    el._lastText = text;
+    el.textContent = text;
+  }
+}
+
+function telemetry(precomputedAlt) {
   const d = Math.round(state.depth);
-  $('#depth').textContent = d + ' m';
-  const altitude = Math.max(0, camera.position.y - floor(camera.position.x, camera.position.z));
-  $('#alt').textContent = altitude < 65 ? altitude.toFixed(1) + ' m' : '—';
+  setText(hudEls.depth, d + ' m');
+  const altitude = precomputedAlt !== undefined
+    ? precomputedAlt
+    : Math.max(0, camera.position.y - floor(camera.position.x, camera.position.z));
+  setText(hudEls.alt, altitude < 65 ? altitude.toFixed(1) + ' m' : '—');
   const deg = Math.round(((-state.heading * 180 / Math.PI) % 360 + 360) % 360);
-  $('#heading').textContent = String(deg).padStart(3, '0') + '°';
-  $('#light').textContent = state.light ? 'Activos' : 'Apagados';
-  $('#count').textContent = state.found + ' / ' + TOTAL_SPECIES;
-  $('#temp').textContent = (2.1 + Math.max(0, 1 - d / 3000) * 1.6).toFixed(1) + ' °C';
+  setText(hudEls.heading, String(deg).padStart(3, '0') + '°');
+  setText(hudEls.light, state.light ? 'Activos' : 'Apagados');
+  setText(hudEls.count, state.found + ' / ' + TOTAL_SPECIES);
+  setText(hudEls.temp, (2.1 + Math.max(0, 1 - d / 3000) * 1.6).toFixed(1) + ' °C');
 
   let zone = 'Lecho Abisal · Fauna bentónica';
   if (d < 480) zone = 'Aguas Superficiales · Ballena Franca Austral';
   else if (d < 1550) zone = 'Zona Pelágica Superior · Medusas';
   else if (d < 2450) zone = 'Zona Mesopelágica · Calamares';
   else if (d < 3250) zone = 'Zona Batipelágica · Peces abisales';
-  $('#zone-label').textContent = zone;
+  setText(hudEls.zoneLabel, zone);
 
   if (state.found === TOTAL_SPECIES) {
-    $('#sonar-hint').textContent = 'Catálogo completo — Exploración libre';
+    setText(hudEls.sonarHint, 'Catálogo completo — Exploración libre');
   } else {
     let nearest = Infinity;
     for (const a of fauna) {
@@ -3168,9 +3242,9 @@ function telemetry() {
         if (dist < nearest) nearest = dist;
       }
     }
-    $('#sonar-hint').textContent = nearest < 90
+    setText(hudEls.sonarHint, nearest < 90
       ? 'Señal bio-acústica cercana: ~' + Math.round(nearest) + ' m'
-      : 'Sin ecos cercanos en este estrato';
+      : 'Sin ecos cercanos en este estrato');
   }
 }
 
@@ -3181,7 +3255,7 @@ function toggleLight() {
   lasers.forEach(l => { l.beam.visible = state.light; l.dot.visible = state.light; });
   snowMaterial.uniforms.enabled.value = state.light ? 1 : 0;
   coneMat.uniforms.uEnabled.value = state.light ? 1 : 0;
-  $('#lamp').classList.toggle('is-on', state.light);
+  hudEls.lamp.classList.toggle('is-on', state.light);
   audio.playLightSwitch(state.light);
   telemetry();
 }
@@ -3189,9 +3263,9 @@ function toggleLight() {
 function toggleAudio() {
   audio.init();
   const isOn = audio.toggleMute();
-  $('#audioBtn').textContent = isOn ? 'Sonido · M' : 'Silencio · M';
-  $('#audioBtn').classList.toggle('is-on', isOn);
-  $('#audioBtn2').textContent = isOn ? 'Audio' : 'Mudo';
+  setText(hudEls.audioBtn, isOn ? 'Sonido · M' : 'Silencio · M');
+  hudEls.audioBtn.classList.toggle('is-on', isOn);
+  setText(hudEls.audioBtn2, isOn ? 'Audio' : 'Mudo');
 }
 
 function scan() {
@@ -3207,7 +3281,7 @@ function scan() {
 
     // Flash & 3D scan effects
     state.strobeIntensity = 1.0;
-    const flashEl = $('#flash-overlay');
+    const flashEl = hudEls.flash;
     flashEl.style.transition = 'none';
     flashEl.style.opacity = '0.75';
     void flashEl.offsetWidth;
@@ -3224,17 +3298,17 @@ function scan() {
     const slot = document.querySelector(`.spec-slot[data-kind="${active.kind}"]`);
     if (slot) slot.classList.add('unlocked');
 
-    $('#status').textContent = state.found === TOTAL_SPECIES
+    setText(hudEls.status, state.found === TOTAL_SPECIES
       ? 'Catálogo completo (7 / 7) — Elegí una especie abajo para revisarla en 3D'
-      : 'Espécimen catalogado: ' + active.name;
+      : 'Espécimen catalogado: ' + active.name);
     statusUntil = state.time + 4.5;
     telemetry();
 
     openSpecimenInspector(active.kind, state.depth);
   } else {
-    $('#status').textContent = canObserve
+    setText(hudEls.status, canObserve
       ? 'Acercate e iluminá un organismo para catalogarlo'
-      : 'Encendé los reflectores [L] para registrar organismos';
+      : 'Encendé los reflectores [L] para registrar organismos');
     statusUntil = state.time + 3;
   }
 }
@@ -3296,6 +3370,11 @@ const laserDir = new THREE.Vector3();
 const laserEndPt = new THREE.Vector3();
 const rightVec = new THREE.Vector3();
 const upVec = new THREE.Vector3();
+const whaleCollider = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 12, 8),
+  new THREE.MeshBasicMaterial()
+);
+whaleCollider.scale.set(2.4, 1.5, 7.8);
 
 function raymarchFloor(origin, dir, maxDist) {
   let prevT = 0.4;
@@ -3453,10 +3532,16 @@ function update() {
       a.group.position.z = a.baseZ + Math.sin(state.time * 0.08 + a.baseX) * 0.65;
       a.group.position.y = floor(a.group.position.x, a.group.position.z) + a.yOffset;
     }
-    a.group.userData.animate(state.time, dt, a.capturePulse, speedMult);
-
     toAnimal.copy(a.group.position).sub(camera.position);
     const dist = toAnimal.length();
+    const visRange = a.kind === 'whale' ? 95 : 68;
+    if (dist > visRange) {
+      a.group.visible = false;
+      continue;
+    }
+    a.group.visible = true;
+    a.group.userData.animate(state.time, dt, a.capturePulse, speedMult);
+
     const maxRange = a.kind === 'whale' ? 36 : 17;
     const minDot = a.kind === 'whale' ? 0.74 : 0.87;
     if (dist < maxRange && toAnimal.normalize().dot(direction) > minDot && dist < best) {
@@ -3464,6 +3549,8 @@ function update() {
       best = dist;
     }
   }
+
+  lamps[0].castShadow = state.light && (alt < 48 || active !== null);
 
   const canObserve = state.light || state.depth < 480;
   if (active && canObserve && active !== prevActive) {
@@ -3478,6 +3565,13 @@ function update() {
     upVec.set(0, 1, 0).applyQuaternion(camera.quaternion);
     laserDir.copy(direction).normalize();
 
+    if (active && active.kind === 'whale') {
+      whaleCollider.position.copy(active.group.position);
+      whaleCollider.quaternion.copy(active.group.quaternion);
+      whaleCollider.scale.set(2.4 * active.scale, 1.5 * active.scale, 7.8 * active.scale);
+      whaleCollider.updateMatrixWorld(true);
+    }
+
     for (const l of lasers) {
       laserOrigin.copy(camera.position)
         .addScaledVector(rightVec, l.offsetX)
@@ -3487,7 +3581,9 @@ function update() {
       if (active) {
         raycaster.set(laserOrigin, laserDir);
         raycaster.far = Math.min(34, hitDist);
-        const hits = raycaster.intersectObject(active.group, true);
+        const hits = active.kind === 'whale'
+          ? raycaster.intersectObject(whaleCollider, false)
+          : raycaster.intersectObject(active.group, true);
         if (hits.length > 0 && hits[0].distance < hitDist) {
           hitDist = hits[0].distance;
         }
@@ -3534,7 +3630,7 @@ function update() {
   }
 
   // Update 3D-projected Screen Reticle
-  const reticle = $('#reticle');
+  const reticle = hudEls.reticle;
   if (active && canObserve) {
     projPos.copy(active.group.position);
     projPos.y += active.kind === 'coral' ? 0.9 : 0.2;
@@ -3547,9 +3643,9 @@ function update() {
       reticle.classList.add('visible');
       const isRec = recordedKinds.has(active.kind);
       reticle.classList.toggle('recorded', isRec);
-      $('#ret-name').textContent = active.name;
-      $('#ret-meta').textContent = best.toFixed(1) + ' m · ' + SPECIES_DATA[active.kind].size;
-      $('#ret-action').textContent = isRec ? 'Catalogado · [E] Revisar' : '[E] Registrar espécimen';
+      setText(hudEls.retName, active.name);
+      setText(hudEls.retMeta, best.toFixed(1) + ' m · ' + SPECIES_DATA[active.kind].size);
+      setText(hudEls.retAction, isRec ? 'Catalogado · [E] Revisar' : '[E] Registrar espécimen');
     } else {
       reticle.classList.remove('visible');
     }
@@ -3558,11 +3654,11 @@ function update() {
   }
 
   if (state.time > statusUntil) {
-    $('#status').textContent = active && canObserve
+    setText(hudEls.status, active && canObserve
       ? active.name + (recordedKinds.has(active.kind) ? ' — catalogado · abrí su lámina abajo' : ' — presioná [E] para registrar')
-      : (state.found === TOTAL_SPECIES ? 'Catálogo completo · 7 / 7 especies registradas' : 'Explorá la superficie verdosa y descendé hacia el abismo');
+      : (state.found === TOTAL_SPECIES ? 'Catálogo completo · 7 / 7 especies registradas' : 'Explorá la superficie verdosa y descendé hacia el abismo'));
   }
-  telemetry();
+  telemetry(alt);
 }
 
 function frame(now) {
