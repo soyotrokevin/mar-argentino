@@ -625,7 +625,7 @@
     <p>Partí desde las aguas verdosas cercanas a la superficie, donde habita la ballena franca austral, y sumergite hacia la oscuridad abisal para catalogar siete especies en láminas 3D.</p>
     <p class="key-guide"><b>W / S</b> avanzar y retroceder · <b>A / D</b> girar<br>
        <b>↓ / ↑</b> descender y ascender · <b>L</b> luces · <b>E</b> registrar · <b>M</b> sonido</p>
-    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>A</b> registrar · <b>B</b> cerrar ficha · <b>X</b> luces · <b>Y</b> sonido · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><button id="calibrate-pad" type="button">Calibrar palanca derecha</button><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
+    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>L1 / LB</b> luces · <b>R1 / RB</b> registrar · <b>B</b> cerrar ficha · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><button id="calibrate-pad" type="button">Calibrar palanca derecha</button><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
     <button id="start">Iniciar descenso →</button>
   </div>
 </div>
@@ -3387,8 +3387,8 @@ function pollGamepad() {
   } else if (specOpen) {
     if (edge(1) || edge(0)) closeSpecimenInspector();
   } else {
-    if (edge(0)) scan();
-    if (edge(2)) { audio.init(); toggleLight(); }
+    if (edge(0) || edge(5)) scan();
+    if (edge(2) || edge(4)) { audio.init(); toggleLight(); }
     if (edge(3)) toggleAudio();
   }
   padState.buttons = pad.buttons.map(b => b.pressed);
