@@ -625,7 +625,7 @@
     <p>Partí desde las aguas verdosas cercanas a la superficie, donde habita la ballena franca austral, y sumergite hacia la oscuridad abisal para catalogar siete especies en láminas 3D.</p>
     <p class="key-guide"><b>W / S</b> avanzar y retroceder · <b>A / D</b> girar<br>
        <b>↓ / ↑</b> descender y ascender · <b>L</b> luces · <b>E</b> registrar · <b>M</b> sonido</p>
-    <small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
+    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>A</b> registrar · <b>B</b> cerrar ficha · <b>X</b> luces · <b>Y</b> sonido · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
     <button id="start">Iniciar descenso →</button>
   </div>
 </div>
@@ -3324,6 +3324,47 @@ $('#start').onclick = () => {
   last = performance.now();
 };
 
+// Standard Gamepad API: axes are sampled every frame; buttons fire on the rising edge.
+const padState = { yaw: 0, move: 0, depth: 0, buttons: [], index: null };
+function padAxis(value) {
+  const v = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+  return Math.abs(v) < 0.18 ? 0 : Math.sign(v) * (Math.abs(v) - 0.18) / 0.82;
+}
+function pollGamepad() {
+  const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
+  const pad = pads.find(p => p.index === padState.index) || pads.find(p => p.mapping === 'standard') || pads[0];
+  if (!pad) {
+    padState.yaw = padState.move = padState.depth = 0;
+    padState.buttons = []; padState.index = null;
+    $('#pad-status').textContent = 'Conectá el joystick y presioná un botón para activarlo.';
+    return;
+  }
+  if (padState.index !== pad.index) { padState.buttons = []; padState.index = pad.index; }
+  $('#pad-status').textContent = pad.mapping === 'standard' ? 'Joystick conectado · disposición estándar' : 'Joystick conectado · la disposición de botones puede variar';
+  padState.yaw = -padAxis(pad.axes[0]);
+  padState.move = -padAxis(pad.axes[1]);
+  padState.depth = padAxis(pad.axes[3] ?? pad.axes[2]);
+  const pressed = i => !!pad.buttons[i]?.pressed;
+  const edge = i => pressed(i) && !padState.buttons[i];
+  if (edge(9)) {
+    if (specOpen) closeSpecimenInspector();
+    else if (state.playing) $('#help').click();
+    else $('#start').click();
+  } else if (!state.playing) {
+    if (edge(0)) $('#start').click();
+  } else if (specOpen) {
+    if (edge(1) || edge(0)) closeSpecimenInspector();
+  } else {
+    if (edge(0)) scan();
+    if (edge(2)) { audio.init(); toggleLight(); }
+    if (edge(3)) toggleAudio();
+  }
+  padState.buttons = pad.buttons.map(b => b.pressed);
+}
+addEventListener('gamepaddisconnected', e => {
+  if (padState.index === e.gamepad.index) { padState.index = null; padState.buttons = []; padState.yaw = padState.move = padState.depth = 0; }
+});
+
 addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (!e.repeat && e.code === 'KeyL') { audio.init(); toggleLight(); }
@@ -3411,9 +3452,9 @@ function update() {
   xrayMaterial.uniforms.uTime.value = state.time;
 
   // Smooth hydrodynamic motion with momentum (longer surface-to-bottom descent)
-  const yawInput = (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0);
-  const moveInput = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
-  const depthInput = (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0);
+  const yawInput = Math.max(-1, Math.min(1, (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) + padState.yaw));
+  const moveInput = Math.max(-1, Math.min(1, (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + padState.move));
+  const depthInput = Math.max(-1, Math.min(1, (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0) + padState.depth));
 
   state.velYaw = lerp(state.velYaw, yawInput * 0.019, 0.14);
   state.velForward = lerp(state.velForward, moveInput * 0.115, 0.12);
@@ -3663,6 +3704,7 @@ function update() {
 
 function frame(now) {
   requestAnimationFrame(frame);
+  pollGamepad();
   if (state.playing) {
     acc += Math.min(now - last, 100);
     last = now;
