@@ -625,7 +625,7 @@
     <p>Partí desde las aguas verdosas cercanas a la superficie, donde habita la ballena franca austral, y sumergite hacia la oscuridad abisal para catalogar siete especies en láminas 3D.</p>
     <p class="key-guide"><b>W / S</b> avanzar y retroceder · <b>A / D</b> girar<br>
        <b>↓ / ↑</b> descender y ascender · <b>L</b> luces · <b>E</b> registrar · <b>M</b> sonido</p>
-    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>A</b> registrar · <b>B</b> cerrar ficha · <b>X</b> luces · <b>Y</b> sonido · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
+    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>A</b> registrar · <b>B</b> cerrar ficha · <b>X</b> luces · <b>Y</b> sonido · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><button id="calibrate-pad" type="button">Calibrar palanca derecha</button><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
     <button id="start">Iniciar descenso →</button>
   </div>
 </div>
@@ -3330,22 +3330,54 @@ function padAxis(value) {
   const v = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
   return Math.abs(v) < 0.18 ? 0 : Math.sign(v) * (Math.abs(v) - 0.18) / 0.82;
 }
+let calibration = null, depthMapping = null;
+let savedPadMappings = {};
+try { savedPadMappings = JSON.parse(localStorage.getItem('talud-gamepad-depth') || '{}'); } catch (_) {}
+const calibrationButton = $('#calibrate-pad');
+calibrationButton.onclick = () => {
+  if (padState.index === null) { $('#pad-status').textContent = 'Conectá el joystick y presioná un botón primero.'; return; }
+  calibration = { stage: 'neutral', started: performance.now(), axes: [], buttons: [] };
+  calibrationButton.textContent = 'Dejá las palancas en reposo…';
+};
 function pollGamepad() {
   const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
   const pad = pads.find(p => p.index === padState.index) || pads.find(p => p.mapping === 'standard') || pads[0];
   if (!pad) {
     padState.yaw = padState.move = padState.depth = 0;
-    padState.buttons = []; padState.index = null;
+    padState.buttons = []; padState.index = null; calibration = null;
     $('#pad-status').textContent = 'Conectá el joystick y presioná un botón para activarlo.';
     return;
   }
-  if (padState.index !== pad.index) { padState.buttons = []; padState.index = pad.index; }
+  if (padState.index !== pad.index) { padState.buttons = []; padState.index = pad.index; depthMapping = savedPadMappings[pad.id] || null; }
   $('#pad-status').textContent = pad.mapping === 'standard' ? 'Joystick conectado · disposición estándar' : 'Joystick conectado · la disposición de botones puede variar';
+  if (calibration) {
+    const c = calibration;
+    if (c.stage === 'neutral' && performance.now() - c.started > 1000) {
+      c.axes = Array.from(pad.axes); c.buttons = pad.buttons.map(b => b.pressed); c.stage = 'up';
+      calibrationButton.textContent = 'Mové la palanca derecha hacia arriba';
+    } else if (c.stage === 'up' || c.stage === 'down') {
+      let hit = null;
+      for (let i = 2; i < pad.axes.length; i++) if (Math.abs(pad.axes[i] - c.axes[i]) > .55) { hit = { type: 'axis', index: i, sign: Math.sign(pad.axes[i] - c.axes[i]), center: c.axes[i] }; break; }
+      if (!hit) for (let i = 0; i < pad.buttons.length; i++) if (pad.buttons[i].pressed && !c.buttons[i]) { hit = { type: 'button', index: i }; break; }
+      if (hit && c.stage === 'up') { c.up = hit; c.stage = 'release'; calibrationButton.textContent = 'Soltá la palanca'; }
+      else if (hit && c.stage === 'down') {
+        if (hit.type === c.up.type && hit.index === c.up.index && (hit.type !== 'axis' || hit.sign !== c.up.sign)) { calibrationButton.textContent = 'Señal repetida: soltá y mové hacia abajo'; }
+        else { depthMapping = { up: c.up, down: hit }; savedPadMappings[pad.id] = depthMapping; try { localStorage.setItem('talud-gamepad-depth', JSON.stringify(savedPadMappings)); } catch (_) {} calibration = null; calibrationButton.textContent = 'Calibración lista · volver a calibrar'; }
+      }
+    } else if (c.stage === 'release') {
+      const released = c.up.type === 'axis' ? Math.abs(pad.axes[c.up.index] - c.axes[c.up.index]) < .2 : !pad.buttons[c.up.index]?.pressed;
+      if (released) { c.stage = 'down'; calibrationButton.textContent = 'Mové la palanca derecha hacia abajo'; }
+    }
+    padState.yaw = padState.move = padState.depth = 0;
+    padState.buttons = pad.buttons.map(b => b.pressed);
+    return;
+  }
   padState.yaw = -padAxis(pad.axes[0]);
   padState.move = -padAxis(pad.axes[1]);
-  padState.depth = padAxis(pad.axes[3] ?? pad.axes[2]);
+  const mappedValue = binding => binding.type === 'button' ? (pad.buttons[binding.index]?.pressed ? 1 : 0) : Math.max(0, padAxis(((pad.axes[binding.index] ?? binding.center) - binding.center) * binding.sign));
+  padState.depth = depthMapping ? mappedValue(depthMapping.down) - mappedValue(depthMapping.up) : padAxis(pad.axes[3] ?? pad.axes[2]);
   const pressed = i => !!pad.buttons[i]?.pressed;
-  const edge = i => pressed(i) && !padState.buttons[i];
+  const edge = i => pressed(i) && !padState.buttons[i] && !(depthMapping && [depthMapping.up, depthMapping.down].some(b => b.type === 'button' && b.index === i));
   if (edge(9)) {
     if (specOpen) closeSpecimenInspector();
     else if (state.playing) $('#help').click();
