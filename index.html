@@ -104,6 +104,12 @@
     border-bottom: 1px solid var(--hairline);
     font-variant-numeric: tabular-nums;
   }
+  .mission-clock { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); z-index: 3; text-align: center; padding: 8px 20px; background: rgba(2, 12, 18, .78); border: 1px solid rgba(255,255,255,.55); border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .mission-clock .value { font: 700 32px ui-monospace, monospace; color: #fff; }
+  .mission-clock.warning .value { color: #ffbb92; }
+  .mission-clock.hidden { display: none; }
+  .mode-choice { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; color: #fff; }
+  .mode-choice[hidden] { display: none; }
   .tele-item {
     display: flex;
     flex-direction: column;
@@ -219,6 +225,12 @@
     letter-spacing: 0.05em;
     padding: 7px 13px;
   }
+  .controls button.icon-control { font-size: 20px; line-height: 1; width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; }
+  .controls button.icon-control:not(.is-on):not(.capture-control) { opacity: .6; }
+  .icon-control svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-control .off-mark { display: none; }
+  .icon-control:not(.is-on) .off-mark { display: block; }
+  .icon-control:not(.is-on) .sound-waves { display: none; }
   .controls button.is-on {
     border-color: rgba(155, 232, 216, 0.45);
     color: #eafcf8;
@@ -494,6 +506,16 @@
     padding: 11px 22px;
     letter-spacing: 0.04em;
   }
+  #initial-actions { text-align: center; max-width: 400px; }
+  #initial-actions .intro-kicker { color: var(--accent-aqua); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 10px; }
+  #initial-actions h1 { margin: 0 0 10px; }
+  #initial-actions p { margin: 0 0 24px; }
+  #initial-actions .start-options { display: grid; gap: 10px; }
+  #initial-actions button { width: 100%; min-height: 54px; border-radius: 8px; text-transform: uppercase; letter-spacing: .1em; transition: transform .16s, box-shadow .16s, background .16s; }
+  #initial-actions #start { background: linear-gradient(120deg, #a0edda, #5bc6bc); box-shadow: 0 0 24px rgba(98, 219, 204, .23); }
+  #initial-actions #start-free { background: rgba(16, 50, 60, .8); border: 1px solid rgba(155, 232, 216, .55); color: #e8fff9; }
+  #initial-actions button:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(98, 219, 204, .35); }
+  #initial-actions button:focus-visible, .controls button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
   .card button:hover {
     background: #ffffff;
   }
@@ -540,17 +562,17 @@
 </div>
 
 <div class="hud">
+  <div id="mission-clock" class="mission-clock hidden"><span class="label">Tiempo restante</span><div id="timer" class="value">02:00</div></div>
   <div class="top">
     <div class="expedition-note">
       <div class="eyebrow" id="zone-label">Zona Pelágica Superior</div>
-      <div class="subtitle" id="sonar-hint">Exploración de columna de agua y fondo marino</div>
+
     </div>
     <div class="telemetry-bar">
+
       <div class="tele-item"><span class="label">Profundidad</span><span id="depth" class="value">0 m</span></div>
-      <div class="tele-item"><span class="label">Altitud</span><span id="alt" class="value">—</span></div>
       <div class="tele-item"><span class="label">Rumbo</span><span id="heading" class="value">000°</span></div>
       <div class="tele-item"><span class="label">Temp.</span><span id="temp" class="value">3.7 °C</span></div>
-      <div class="tele-item"><span class="label">Reflectores</span><span id="light" class="value">Activos</span></div>
     </div>
   </div>
 
@@ -575,9 +597,9 @@
     </div>
 
     <div class="controls desktop">
-      <button id="lamp" class="is-on">Luces · L</button>
-      <button id="scan">Registrar · E</button>
-      <button id="audioBtn" class="is-on">Sonido · M</button>
+      <button id="lamp" class="icon-control is-on" aria-label="Apagar luces (L)" title="Apagar luces (L)" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5l4-3v12l-4-3H4z"/><path d="M16 9l3-2M16 12h4M16 15l3 2"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
+      <button id="scan" class="icon-control capture-control" aria-label="Registrar especie (E)" title="Registrar especie (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
+      <button id="audioBtn" class="icon-control is-on" aria-label="Silenciar sonido (M)" title="Silenciar sonido (M)" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
       <button id="help">Guía</button>
     </div>
 
@@ -586,9 +608,9 @@
       <button data-c="forward">▲</button>
       <button data-c="right">▶</button>
       <button data-c="down">▼</button>
-      <button id="lamp2">Luz</button>
-      <button id="scan2">Capturar</button>
-      <button id="audioBtn2">Audio</button>
+      <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5l4-3v12l-4-3H4z"/><path d="M16 9l3-2M16 12h4M16 15l3 2"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
+      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
+      <button id="audioBtn2" class="icon-control is-on" aria-label="Silenciar sonido" title="Silenciar sonido" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
     </div>
   </div>
 </div>
@@ -620,16 +642,19 @@
 
 <div class="modal" id="modal">
   <div class="card">
-    <div class="eyebrow">Exploración de aguas profundas</div>
-    <h1>En la oscuridad del océano.</h1>
-    <p>Partí desde las aguas verdosas cercanas a la superficie, donde habita la ballena franca austral, y sumergite hacia la oscuridad abisal para catalogar siete especies en láminas 3D.</p>
-    <p class="key-guide"><b>W / S</b> avanzar y retroceder · <b>A / D</b> girar<br>
-       <b>↓ / ↑</b> descender y ascender · <b>L</b> luces · <b>E</b> registrar · <b>M</b> sonido</p>
-    <p class="key-guide"><b>Joystick USB</b> · palanca izquierda: avanzar y girar · palanca derecha: ascender y descender<br><b>L1 / LB</b> luces · <b>R1 / RB</b> registrar · <b>B</b> cerrar ficha · <b>Start</b> iniciar / pausa</p><small id="pad-status" aria-live="polite">Conectá el joystick y presioná un botón para activarlo.</small><br><button id="calibrate-pad" type="button">Calibrar palanca derecha</button><br><small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small>
-    <button id="start">Iniciar descenso →</button>
+    <div id="initial-actions"><div class="intro-kicker">Mar Argentino</div><h1>Descendé a lo desconocido.</h1><p>Explorá las profundidades y descubrí la vida que habita en ellas.</p><div class="start-options"><button id="start">Iniciar misión</button><button id="start-free">Exploración libre</button></div></div>
+    <div id="pause-actions" hidden>
+      <p><b>W / S</b> avanzar y retroceder · <b>A / D</b> girar<br><b>↓ / ↑</b> descender y ascender · <b>L</b> luces · <b>E</b> registrar · <b>M</b> sonido</p>
+      <p>Joystick: palanca izquierda para navegar · palanca derecha para profundidad · L1 luces · R1 registrar · B cerrar ficha · Start pausa.</p>
+      <small>Modelos 3D: Ballena Franca Austral por DigitalLife3D (CC-BY-NC-4.0); Pez por Microsoft / Khronos Group (CC0).</small><br>
+      <button id="resume">Continuar</button>
+    </div>
   </div>
 </div>
 
+<div class="modal hidden" id="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
+  <div class="card"><div class="eyebrow">Fin de la inmersión</div><h1 id="result-title"></h1><p id="result-message"></p><button id="restart" type="button">Volver a jugar</button><p class="key-guide">Joystick: presioná A para volver a jugar.</p></div>
+</div>
 <script src="./vendor/three.min.js"></script>
 <script src="./models/barramundi_bundle.js"></script>
 <script src="./models/whale_bundle.js"></script>
@@ -3184,16 +3209,35 @@ let prevActive = null;
 let statusUntil = 0;
 
 const TOTAL_SPECIES = Object.keys(SPECIES_DATA).length;
+const DIVE_SECONDS = 120;
+let remainingSeconds = DIVE_SECONDS;
+let gameEnded = false;
+let gameMode = null;
+function displayTimer() {
+  const seconds = Math.max(0, Math.ceil(remainingSeconds));
+  setText($('#timer'), String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'));
+  $('#mission-clock').classList.toggle('warning', seconds <= 20);
+}
+function endDive(won) {
+  if (gameEnded) return;
+  gameEnded = true;
+  state.playing = false;
+  keys.clear();
+  if (specOpen) closeSpecimenInspector();
+  $('#result-title').textContent = won ? '¡Misión cumplida!' : 'Terminó el tiempo';
+  $('#result-message').textContent = won
+    ? 'Registraste las ' + TOTAL_SPECIES + ' especies antes de que terminara la inmersión.'
+    : 'Registraste ' + state.found + ' de ' + TOTAL_SPECIES + ' especies. Podés intentarlo de nuevo.';
+  $('#result-modal').classList.remove('hidden');
+}
+$('#restart').onclick = () => location.reload();
 
 const hudEls = {
   depth: $('#depth'),
-  alt: $('#alt'),
   heading: $('#heading'),
-  light: $('#light'),
   count: $('#count'),
   temp: $('#temp'),
   zoneLabel: $('#zone-label'),
-  sonarHint: $('#sonar-hint'),
   status: $('#status'),
   reticle: $('#reticle'),
   retName: $('#ret-name'),
@@ -3215,13 +3259,8 @@ function setText(el, text) {
 function telemetry(precomputedAlt) {
   const d = Math.round(state.depth);
   setText(hudEls.depth, d + ' m');
-  const altitude = precomputedAlt !== undefined
-    ? precomputedAlt
-    : Math.max(0, camera.position.y - floor(camera.position.x, camera.position.z));
-  setText(hudEls.alt, altitude < 65 ? altitude.toFixed(1) + ' m' : '—');
   const deg = Math.round(((-state.heading * 180 / Math.PI) % 360 + 360) % 360);
   setText(hudEls.heading, String(deg).padStart(3, '0') + '°');
-  setText(hudEls.light, state.light ? 'Activos' : 'Apagados');
   setText(hudEls.count, state.found + ' / ' + TOTAL_SPECIES);
   setText(hudEls.temp, (2.1 + Math.max(0, 1 - d / 3000) * 1.6).toFixed(1) + ' °C');
 
@@ -3232,20 +3271,7 @@ function telemetry(precomputedAlt) {
   else if (d < 3250) zone = 'Zona Batipelágica · Peces abisales';
   setText(hudEls.zoneLabel, zone);
 
-  if (state.found === TOTAL_SPECIES) {
-    setText(hudEls.sonarHint, 'Catálogo completo — Exploración libre');
-  } else {
-    let nearest = Infinity;
-    for (const a of fauna) {
-      if (!recordedKinds.has(a.kind)) {
-        const dist = a.group.position.distanceTo(camera.position);
-        if (dist < nearest) nearest = dist;
-      }
-    }
-    setText(hudEls.sonarHint, nearest < 90
-      ? 'Señal bio-acústica cercana: ~' + Math.round(nearest) + ' m'
-      : 'Sin ecos cercanos en este estrato');
-  }
+
 }
 
 function toggleLight() {
@@ -3255,7 +3281,12 @@ function toggleLight() {
   lasers.forEach(l => { l.beam.visible = state.light; l.dot.visible = state.light; });
   snowMaterial.uniforms.enabled.value = state.light ? 1 : 0;
   coneMat.uniforms.uEnabled.value = state.light ? 1 : 0;
-  hudEls.lamp.classList.toggle('is-on', state.light);
+  for (const button of [hudEls.lamp, $('#lamp2')]) {
+    button.classList.toggle('is-on', state.light);
+    button.setAttribute('aria-pressed', String(state.light));
+    button.setAttribute('aria-label', state.light ? 'Apagar luces' : 'Encender luces');
+    button.title = state.light ? 'Apagar luces (L)' : 'Encender luces (L)';
+  }
   audio.playLightSwitch(state.light);
   telemetry();
 }
@@ -3263,12 +3294,16 @@ function toggleLight() {
 function toggleAudio() {
   audio.init();
   const isOn = audio.toggleMute();
-  setText(hudEls.audioBtn, isOn ? 'Sonido · M' : 'Silencio · M');
-  hudEls.audioBtn.classList.toggle('is-on', isOn);
-  setText(hudEls.audioBtn2, isOn ? 'Audio' : 'Mudo');
+  for (const button of [hudEls.audioBtn, hudEls.audioBtn2]) {
+    button.classList.toggle('is-on', isOn);
+    button.setAttribute('aria-pressed', String(isOn));
+    button.setAttribute('aria-label', isOn ? 'Silenciar sonido' : 'Activar sonido');
+    button.title = isOn ? 'Silenciar sonido (M)' : 'Activar sonido (M)';
+  }
 }
 
 function scan() {
+  if (!state.playing || gameEnded || specOpen) return;
   audio.init();
   const canObserve = state.light || state.depth < 480;
   if (active && canObserve) {
@@ -3304,7 +3339,8 @@ function scan() {
     statusUntil = state.time + 4.5;
     telemetry();
 
-    openSpecimenInspector(active.kind, state.depth);
+    if (state.found === TOTAL_SPECIES && gameMode === 'mission') endDive(true);
+    else openSpecimenInspector(active.kind, state.depth);
   } else {
     setText(hudEls.status, canObserve
       ? 'Acercate e iluminá un organismo para catalogarlo'
@@ -3316,13 +3352,18 @@ function scan() {
 $('#lamp').onclick = $('#lamp2').onclick = () => { audio.init(); toggleLight(); };
 $('#scan').onclick = $('#scan2').onclick = scan;
 $('#audioBtn').onclick = $('#audioBtn2').onclick = toggleAudio;
-$('#help').onclick = () => { $('#modal').classList.remove('hidden'); state.playing = false; };
-$('#start').onclick = () => {
+$('#help').onclick = () => { $('#initial-actions').hidden = true; $('#pause-actions').hidden = false; $('#modal').classList.remove('hidden'); state.playing = false; };
+function beginDive(mode) {
   audio.init();
+  if (gameMode === null) gameMode = mode;
+  $('#mission-clock').classList.toggle('hidden', gameMode !== 'mission');
   $('#modal').classList.add('hidden');
   state.playing = true;
   last = performance.now();
-};
+}
+$('#start').onclick = () => beginDive('mission');
+$('#start-free').onclick = () => beginDive('free');
+$('#resume').onclick = () => beginDive(gameMode);
 
 // Standard Gamepad API: axes are sampled every frame; buttons fire on the rising edge.
 const padState = { yaw: 0, move: 0, depth: 0, buttons: [], index: null };
@@ -3330,60 +3371,34 @@ function padAxis(value) {
   const v = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
   return Math.abs(v) < 0.18 ? 0 : Math.sign(v) * (Math.abs(v) - 0.18) / 0.82;
 }
-let calibration = null, depthMapping = null;
+let depthMapping = null;
 let savedPadMappings = {};
 try { savedPadMappings = JSON.parse(localStorage.getItem('talud-gamepad-depth') || '{}'); } catch (_) {}
-const calibrationButton = $('#calibrate-pad');
-calibrationButton.onclick = () => {
-  if (padState.index === null) { $('#pad-status').textContent = 'Conectá el joystick y presioná un botón primero.'; return; }
-  calibration = { stage: 'neutral', started: performance.now(), axes: [], buttons: [] };
-  calibrationButton.textContent = 'Dejá las palancas en reposo…';
-};
 function pollGamepad() {
   const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
   const pad = pads.find(p => p.index === padState.index) || pads.find(p => p.mapping === 'standard') || pads[0];
   if (!pad) {
     padState.yaw = padState.move = padState.depth = 0;
-    padState.buttons = []; padState.index = null; calibration = null;
-    $('#pad-status').textContent = 'Conectá el joystick y presioná un botón para activarlo.';
+    padState.buttons = []; padState.index = null;
     return;
   }
   if (padState.index !== pad.index) { padState.buttons = []; padState.index = pad.index; depthMapping = savedPadMappings[pad.id] || null; }
-  $('#pad-status').textContent = pad.mapping === 'standard' ? 'Joystick conectado · disposición estándar' : 'Joystick conectado · la disposición de botones puede variar';
-  if (calibration) {
-    const c = calibration;
-    if (c.stage === 'neutral' && performance.now() - c.started > 1000) {
-      c.axes = Array.from(pad.axes); c.buttons = pad.buttons.map(b => b.pressed); c.stage = 'up';
-      calibrationButton.textContent = 'Mové la palanca derecha hacia arriba';
-    } else if (c.stage === 'up' || c.stage === 'down') {
-      let hit = null;
-      for (let i = 2; i < pad.axes.length; i++) if (Math.abs(pad.axes[i] - c.axes[i]) > .55) { hit = { type: 'axis', index: i, sign: Math.sign(pad.axes[i] - c.axes[i]), center: c.axes[i] }; break; }
-      if (!hit) for (let i = 0; i < pad.buttons.length; i++) if (pad.buttons[i].pressed && !c.buttons[i]) { hit = { type: 'button', index: i }; break; }
-      if (hit && c.stage === 'up') { c.up = hit; c.stage = 'release'; calibrationButton.textContent = 'Soltá la palanca'; }
-      else if (hit && c.stage === 'down') {
-        if (hit.type === c.up.type && hit.index === c.up.index && (hit.type !== 'axis' || hit.sign !== c.up.sign)) { calibrationButton.textContent = 'Señal repetida: soltá y mové hacia abajo'; }
-        else { depthMapping = { up: c.up, down: hit }; savedPadMappings[pad.id] = depthMapping; try { localStorage.setItem('talud-gamepad-depth', JSON.stringify(savedPadMappings)); } catch (_) {} calibration = null; calibrationButton.textContent = 'Calibración lista · volver a calibrar'; }
-      }
-    } else if (c.stage === 'release') {
-      const released = c.up.type === 'axis' ? Math.abs(pad.axes[c.up.index] - c.axes[c.up.index]) < .2 : !pad.buttons[c.up.index]?.pressed;
-      if (released) { c.stage = 'down'; calibrationButton.textContent = 'Mové la palanca derecha hacia abajo'; }
-    }
-    padState.yaw = padState.move = padState.depth = 0;
-    padState.buttons = pad.buttons.map(b => b.pressed);
-    return;
-  }
   padState.yaw = -padAxis(pad.axes[0]);
   padState.move = -padAxis(pad.axes[1]);
   const mappedValue = binding => binding.type === 'button' ? (pad.buttons[binding.index]?.pressed ? 1 : 0) : Math.max(0, padAxis(((pad.axes[binding.index] ?? binding.center) - binding.center) * binding.sign));
   padState.depth = depthMapping ? mappedValue(depthMapping.down) - mappedValue(depthMapping.up) : padAxis(pad.axes[3] ?? pad.axes[2]);
   const pressed = i => !!pad.buttons[i]?.pressed;
   const edge = i => pressed(i) && !padState.buttons[i] && !(depthMapping && [depthMapping.up, depthMapping.down].some(b => b.type === 'button' && b.index === i));
-  if (edge(9)) {
+  if (gameEnded) {
+    if (edge(0) || edge(9)) $('#restart').click();
+  } else if (edge(9)) {
     if (specOpen) closeSpecimenInspector();
     else if (state.playing) $('#help').click();
-    else $('#start').click();
+    else if (gameMode === null) $('#start').click();
+    else $('#resume').click();
   } else if (!state.playing) {
-    if (edge(0)) $('#start').click();
+    if (gameMode === null && edge(3)) $('#start-free').click();
+    else if (edge(0)) (gameMode === null ? $('#start') : $('#resume')).click();
   } else if (specOpen) {
     if (edge(1) || edge(0)) closeSpecimenInspector();
   } else {
@@ -3434,6 +3449,7 @@ addEventListener('resize', () => {
 // ---------------------------------------------------------------------------
 let last = performance.now();
 let acc = 0;
+document.addEventListener('visibilitychange', () => { last = performance.now(); acc = 0; });
 const direction = new THREE.Vector3();
 const toAnimal = new THREE.Vector3();
 const projPos = new THREE.Vector3();
@@ -3737,8 +3753,14 @@ function update() {
 function frame(now) {
   requestAnimationFrame(frame);
   pollGamepad();
-  if (state.playing) {
-    acc += Math.min(now - last, 100);
+  const elapsed = Math.max(0, now - last);
+  if (state.playing && gameMode === 'mission' && !specOpen && !document.hidden) {
+    remainingSeconds = Math.max(0, remainingSeconds - elapsed / 1000);
+    displayTimer();
+    if (remainingSeconds <= 0) endDive(false);
+  }
+  if (state.playing && !specOpen && !document.hidden) {
+    acc += Math.min(elapsed, 100);
     last = now;
     while (acc >= 16.667) {
       update();
@@ -3760,6 +3782,7 @@ function frame(now) {
 }
 
 updateWaterOptics(state.depth);
+displayTimer();
 telemetry();
 requestAnimationFrame(frame);
 </script>
