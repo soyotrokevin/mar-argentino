@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mar Argentino — Exploración Submarina 3D</title>
 <meta name="description" content="Sumergite desde la superficie del Atlántico Sur hasta el lecho abisal y catalogá la fauna marina en 3D.">
 <meta name="theme-color" content="#072824">
@@ -664,28 +664,83 @@
   }
   #initial-actions button:focus-visible, .controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  @media (max-width: 760px) {
-    .hud { padding: 12px 14px; }
-    .expedition-note { display: none; }
-    .telemetry-bar { gap: 12px; width: 100%; justify-content: space-between; }
+  #journal-toggle, #help2 { display: none; }
+  @media (max-width: 760px), (pointer: coarse), (max-width: 1000px) and (max-height: 460px) {
+    .hud {
+      padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+        max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    }
+    .expedition-note, .desktop { display: none; }
+    .telemetry-bar { gap: 10px; align-items: center; }
+    #help2 { display: block; min-width: 44px; min-height: 44px; padding: 4px; font-size: 20px; }
     .tele-item { align-items: flex-start; }
     .value { font-size: 14px; }
-    .bitacora-box { min-width: 0; width: 100%; }
-    .desktop { display: none; }
-    .mobile { display: flex; width: 100%; justify-content: space-between; gap: 5px; }
-    .mobile button { flex: 1; padding: 9px 6px; font-size: 11px; }
-    #specimen-card {
-      right: 12px;
-      left: 12px;
-      width: auto;
-      top: auto;
-      bottom: 84px;
-      transform: translateY(20px);
-      max-height: 62vh;
+    .mission-clock { position: static; transform: none; margin-left: auto; order: 1; align-self: start; text-align: right; }
+    .mission-clock .value { font-size: 19px; }
+    .top { gap: 10px; }
+    .bottom { gap: 6px; width: 100%; align-items: flex-end; }
+    .bitacora-box { min-width: 0; width: 100%; max-width: none; pointer-events: none; }
+    .bitacora-head { pointer-events: auto; gap: 8px; width: fit-content; }
+    .bitacora-head > .label { display: none; }
+    #journal-toggle { display: inline-block; padding: 0 12px; min-height: 44px; color: white; font-size: 12px; }
+    #status { font-size: 12px; min-height: 0; margin: 2px 0; }
+    .collection-dock { display: none; }
+    .bitacora-box.journal-open .collection-dock {
+      display: flex; pointer-events: auto; padding: 6px; border-radius: 8px;
+      background: rgba(2, 13, 19, .85); max-height: 26dvh; overflow-y: auto;
     }
+    .spec-slot { min-height: 44px; }
+    .mobile { display: flex; width: 100%; justify-content: space-between; align-items: flex-end; gap: 8px; touch-action: none; }
+    .touch-stick {
+      position: relative; flex: none; width: clamp(96px, 28vw, 132px); aspect-ratio: 1;
+      border-radius: 50%; border: 1px solid #ffffff65; background: #051c21b3; touch-action: none;
+    }
+    .touch-stick::before, .touch-stick::after {
+      position: absolute; top: 50%; left: 50%; content: ""; background: #ffffff40;
+      transform: translate(-50%, -50%);
+    }
+    .touch-stick::before { width: 76%; height: 1px; }
+    .touch-stick::after { width: 1px; height: 76%; }
+    .touch-knob {
+      position: absolute; inset: 29%; border: 1px solid #a5eaddb3; border-radius: 50%;
+      background: #a5eadd55; z-index: 1; pointer-events: none;
+      transform: translate(var(--stick-x, 0px), var(--stick-y, 0px));
+    }
+    .touch-actions {
+      display: grid;
+      grid-template-columns: 44px minmax(50px, 58px) minmax(50px, 56px);
+      grid-template-areas: "lights capture ascend" "sound capture descend";
+      gap: 5px 8px;
+    }
+    .touch-actions button { min-height: 44px; padding: 4px; }
+    .touch-actions .icon-control { width: 100%; }
+    .touch-actions #lamp2 { grid-area: lights; }
+    .touch-actions #audioBtn2 { grid-area: sound; }
+    .touch-actions [data-depth="-1"] { grid-area: ascend; border-radius: 12px 12px 4px 4px; }
+    .touch-actions [data-depth="1"] { grid-area: descend; border-radius: 4px 4px 12px 12px; }
+    .touch-actions [data-depth] {
+      font-size: 22px; touch-action: none;
+      background: #072d32dc; border-color: #a5eadd66;
+    }
+    .touch-actions [data-depth].held { background: #266559; }
+    .touch-actions #scan2 { grid-area: capture; height: 100%; background: #124e46; border-color: #a5eadd83; }
+    .touch-actions #scan2.ready { background: #8ce2cc; color: #072823; }
+    #specimen-card {
+      right: max(12px, env(safe-area-inset-right)); left: max(12px, env(safe-area-inset-left));
+      width: auto; top: auto; bottom: max(12px, env(safe-area-inset-bottom));
+      transform: translateY(20px); max-height: 88dvh; overscroll-behavior: contain;
+    }
+    #close-specimen { min-height: 44px; min-width: 44px; }
     #specimen-card.open { transform: translateY(0); }
-    .card { padding: 24px; }
+    .card { padding: 20px; max-height: 90dvh; overflow-y: auto; }
     .card h1 { font-size: 28px; }
+    .reticle-tag { width: 200px; white-space: normal; }
+    #reticle.is-above { transform: translate(-50%, calc(-100% - 10px)); }
+    body:has(.journal-open) #reticle { opacity: 0; }
+  }
+  @media (orientation: landscape) and (max-height: 460px) and (max-width: 1000px), (orientation: landscape) and (max-height: 460px) and (pointer: coarse) {
+    .touch-stick { width: clamp(88px, 28dvh, 112px); }
+    .bitacora-box { position: absolute; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; width: min(36%, 300px); transform: translateX(-50%); }
   }
 </style>
 </head>
@@ -703,17 +758,18 @@
 </div>
 
 <div class="hud">
-  <div id="mission-clock" class="mission-clock hidden">
-    <span class="label">Tiempo</span>
-    <div id="timer" class="value">02:00</div>
-  </div>
-
   <div class="top">
+    <div id="mission-clock" class="mission-clock hidden">
+      <span class="label">Tiempo</span>
+      <div id="timer" class="value">02:00</div>
+    </div>
+
     <div class="expedition-note">
       <div class="value" id="zone-label">Aguas superficiales</div>
     </div>
 
     <div class="telemetry-bar">
+      <button id="help2" aria-label="Ajustes" title="Ajustes">⚙</button>
       <div class="tele-item"><span class="label">Profundidad</span><span id="depth" class="value">0 m</span></div>
       <div class="tele-item"><span class="label">Rumbo</span><span id="heading" class="value">000°</span></div>
       <div class="tele-item"><span class="label">Temp.</span><span id="temp" class="value">3.7 °C</span></div>
@@ -726,6 +782,7 @@
     <div class="bitacora-box">
       <div class="bitacora-head">
         <span class="label">Catálogo biológico</span>
+        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo</button>
         <span id="count" class="value">0 / 7</span>
       </div>
       <span id="status">Explorá la superficie verdosa y descendé hacia el abismo</span>
@@ -748,16 +805,14 @@
     </div>
 
     <div class="controls mobile">
-      <button data-c="left">◀</button>
-      <button data-c="forward">▲</button>
-      <button data-c="right">▶</button>
-      <button data-c="reverse" aria-label="Retroceder">↶</button>
-      <button data-c="up" aria-label="Ascender">⇧</button>
-      <button data-c="down" aria-label="Descender">⇩</button>
-      <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5l4-3v12l-4-3H4z"/><path d="M16 9l3-2M16 12h4M16 15l3 2"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
-      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
-      <button id="audioBtn2" class="icon-control is-on" aria-label="Silenciar sonido" title="Silenciar sonido" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
-      <button id="help2" aria-label="Ajustes" title="Ajustes">⚙</button>
+      <div class="touch-stick" id="touch-stick" role="group" aria-label="Palanca táctil para avanzar, retroceder y girar"><span class="touch-knob"></span></div>
+      <div class="touch-actions">
+        <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h7l3-3v10l-3-3H4zM16 8l4-2M17 12h4M16 16l4 2"/><path d="M7 10v4"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
+        <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
+        <button type="button" data-depth="-1" aria-label="Ascender">↑</button>
+        <button id="audioBtn2" class="icon-control is-on" aria-label="Silenciar sonido" title="Silenciar sonido" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
+        <button type="button" data-depth="1" aria-label="Descender">↓</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1462,7 +1517,9 @@ const GLSL_OCEAN_HEIGHT = `
 `;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+const touchLayout = matchMedia('(max-width: 760px), (pointer: coarse), (max-width: 1000px) and (max-height: 460px)');
+function gamePixelRatio() { return Math.min(devicePixelRatio, touchLayout.matches ? 1.25 : 1.75); }
+renderer.setPixelRatio(gamePixelRatio());
 renderer.setSize(innerWidth, innerHeight);
 renderer.setClearColor(0x0d3d35);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -2454,7 +2511,7 @@ const snowMaterial = new THREE.ShaderMaterial({
     uSurfaceLight: { value: 1 },
     uAirBlend: { value: 0 },
     uStrobe: { value: 0 },
-    pixelScale: { value: innerHeight * Math.min(devicePixelRatio, 1.75) }
+    pixelScale: { value: innerHeight * gamePixelRatio() }
   },
   vertexShader: `
     attribute float grain;
@@ -2525,7 +2582,7 @@ const surfaceDustMat = new THREE.ShaderMaterial({
     uTime: { value: 0 },
     uSurfaceLight: { value: 1 },
     uAirBlend: { value: 0 },
-    uPixelScale: { value: innerHeight * Math.min(devicePixelRatio, 1.75) }
+    uPixelScale: { value: innerHeight * gamePixelRatio() }
   },
   vertexShader: `
     attribute float grain;
@@ -2669,7 +2726,7 @@ const bioSparkMat = new THREE.ShaderMaterial({
   blending: THREE.AdditiveBlending,
   uniforms: {
     uTime: { value: 0 },
-    uPixelScale: { value: innerHeight * Math.min(devicePixelRatio, 1.75) }
+    uPixelScale: { value: innerHeight * gamePixelRatio() }
   },
   vertexShader: `
     attribute vec3 aColor;
@@ -4968,22 +5025,88 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
-document.querySelectorAll('[data-c]').forEach(b => {
-  const k = { left: 'KeyA', right: 'KeyD', forward: 'KeyW', reverse: 'KeyS', up: 'ArrowUp', down: 'ArrowDown' }[b.dataset.c];
-  b.onpointerdown = e => {
-    e.preventDefault();
-    audio.init();
-    keys.add(k);
-    b.setPointerCapture(e.pointerId);
-  };
-  b.onpointerup = b.onpointercancel = () => keys.delete(k);
+const touchInput = { yaw: 0, move: 0, depth: 0 };
+const touchStick = $('#touch-stick');
+let stickPointer = null;
+let stickBounds = null;
+const depthPointers = new Map();
+const depthButtons = document.querySelectorAll('[data-depth]');
+function clearTouchControls() {
+  stickPointer = null;
+  touchInput.yaw = touchInput.move = touchInput.depth = 0;
+  touchStick.style.removeProperty('--stick-x');
+  touchStick.style.removeProperty('--stick-y');
+  depthPointers.clear();
+  depthButtons.forEach(button => button.classList.remove('held'));
+}
+function moveTouchStick(event) {
+  if (event.pointerId !== stickPointer) return;
+  const radius = stickBounds.width * 0.34;
+  const x = (event.clientX - stickBounds.left - stickBounds.width / 2) / radius;
+  const y = (event.clientY - stickBounds.top - stickBounds.height / 2) / radius;
+  const magnitude = Math.hypot(x, y);
+  const strength = Math.max(0, (Math.min(1, magnitude) - 0.13) / 0.87);
+  touchInput.yaw = -x / (magnitude || 1) * strength;
+  touchInput.move = -y / (magnitude || 1) * strength;
+  touchStick.style.setProperty('--stick-x', x / Math.max(1, magnitude) * radius + 'px');
+  touchStick.style.setProperty('--stick-y', y / Math.max(1, magnitude) * radius + 'px');
+}
+touchStick.addEventListener('pointerdown', event => {
+  if (stickPointer !== null || event.button !== 0 || !state.playing || specOpen) return;
+  stickPointer = event.pointerId;
+  stickBounds = touchStick.getBoundingClientRect();
+  touchStick.setPointerCapture(event.pointerId);
+  moveTouchStick(event);
 });
+touchStick.addEventListener('pointermove', moveTouchStick);
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  touchStick.addEventListener(type, event => {
+    if (event.pointerId !== stickPointer) return;
+    stickPointer = null;
+    touchInput.yaw = touchInput.move = 0;
+    touchStick.style.removeProperty('--stick-x');
+    touchStick.style.removeProperty('--stick-y');
+  });
+}
+function updateTouchDepth() {
+  let depth = 0;
+  for (const button of depthPointers.values()) depth += Number(button.dataset.depth);
+  touchInput.depth = Math.sign(depth);
+  depthButtons.forEach(button => button.classList.toggle('held', [...depthPointers.values()].includes(button)));
+}
+depthButtons.forEach(button => {
+  button.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || !state.playing || specOpen) return;
+    button.setPointerCapture(event.pointerId);
+    depthPointers.set(event.pointerId, button);
+    updateTouchDepth();
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(type, event => {
+      if (depthPointers.delete(event.pointerId)) updateTouchDepth();
+    });
+  }
+});
+addEventListener('blur', clearTouchControls);
+document.addEventListener('visibilitychange', clearTouchControls);
+$('#journal-toggle').onclick = () => {
+  const expanded = $('.bitacora-box').classList.toggle('journal-open');
+  $('#journal-toggle').setAttribute('aria-expanded', String(expanded));
+};
 
-addEventListener('resize', () => {
+function resizeDiveCamera() {
   camera.aspect = innerWidth / innerHeight;
+  // A vertical phone viewport needs a wider lens to keep targets in frame.
+  camera.fov = Math.max(58, Math.min(94, THREE.MathUtils.radToDeg(2 * Math.atan(0.41 / camera.aspect))));
   camera.updateProjectionMatrix();
+}
+resizeDiveCamera();
+addEventListener('resize', () => {
+  clearTouchControls();
+  resizeDiveCamera();
+  renderer.setPixelRatio(gamePixelRatio());
   renderer.setSize(innerWidth, innerHeight);
-  const pxScale = innerHeight * Math.min(devicePixelRatio, 1.75);
+  const pxScale = innerHeight * gamePixelRatio();
   snowMaterial.uniforms.pixelScale.value = pxScale;
   surfaceDustMat.uniforms.uPixelScale.value = pxScale;
   bioSparkMat.uniforms.uPixelScale.value = pxScale;
@@ -5035,9 +5158,9 @@ function update() {
   const surfFactor = Math.max(0, 1 - posDepth / 900);
 
   // Smooth hydrodynamic motion with momentum (allows ascending slightly above the waves)
-  const yawInput = Math.max(-1, Math.min(1, (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) + padState.yaw));
-  const moveInput = Math.max(-1, Math.min(1, (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + padState.move));
-  const depthInput = Math.max(-1, Math.min(1, (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0) + padState.depth));
+  const yawInput = Math.max(-1, Math.min(1, (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) + padState.yaw + touchInput.yaw));
+  const moveInput = Math.max(-1, Math.min(1, (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + padState.move + touchInput.move));
+  const depthInput = Math.max(-1, Math.min(1, (keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0) + padState.depth + touchInput.depth));
 
   state.velYaw = lerp(state.velYaw, yawInput * 0.019, 0.14);
   state.velForward = lerp(state.velForward, moveInput * 0.115, 0.12);
@@ -5251,6 +5374,7 @@ function update() {
     else audio.playTargetLock();
   }
   prevActive = active;
+  $('#scan2').classList.toggle('ready', Boolean(active && canObserve && !recordedKinds.has(active.kind)));
 
   // Dual yellow-green laser projection (suppressed above water)
   const beamVisible = state.light && airBlend <= 0.55;
@@ -5332,14 +5456,16 @@ function update() {
     if (projPos.z < 1) {
       const sx = (projPos.x * 0.5 + 0.5) * innerWidth;
       const sy = (-projPos.y * 0.5 + 0.5) * innerHeight;
-      reticle.style.left = sx + 'px';
+      const labelX = touchLayout.matches ? THREE.MathUtils.clamp(sx, 112, innerWidth - 112) : sx;
+      reticle.style.left = labelX + 'px';
       reticle.style.top = sy + 'px';
+      reticle.classList.toggle('is-above', touchLayout.matches && sy > innerHeight * 0.58);
       reticle.classList.add('visible');
       const isRec = recordedKinds.has(active.kind);
       reticle.classList.toggle('recorded', isRec);
       setText(hudEls.retName, active.name);
       setText(hudEls.retMeta, best.toFixed(1) + ' m · ' + SPECIES_DATA[active.kind].size);
-      setText(hudEls.retAction, isRec ? 'Catalogado · [E] Revisar' : '[E] Registrar espécimen');
+      setText(hudEls.retAction, isRec ? (touchLayout.matches ? 'Catalogado · tocá la cámara para revisar' : 'Catalogado · [E] Revisar') : (touchLayout.matches ? 'Tocá la cámara para registrar' : '[E] Registrar espécimen'));
     } else {
       reticle.classList.remove('visible');
     }
@@ -5351,7 +5477,7 @@ function update() {
     setText(hudEls.status, 'Límite del área de exploración · cambiá de rumbo');
   } else if (state.time > statusUntil) {
     setText(hudEls.status, active && canObserve
-      ? active.name + (recordedKinds.has(active.kind) ? ' — catalogado · abrí su lámina abajo' : ' — presioná [E] para registrar')
+      ? active.name + (recordedKinds.has(active.kind) ? ' — catalogado · abrí su lámina abajo' : (touchLayout.matches ? ' · listo para registrar' : ' — presioná [E] para registrar'))
       : (state.found === TOTAL_SPECIES ? 'Catálogo completo · 7 / 7 especies registradas' : 'Explorá la superficie verdosa y descendé hacia el abismo'));
   }
   telemetry(alt);
@@ -5360,6 +5486,7 @@ function update() {
 function frame(now) {
   requestAnimationFrame(frame);
   pollGamepad();
+  if ((!state.playing || specOpen) && (stickPointer !== null || depthPointers.size)) clearTouchControls();
   const elapsed = Math.max(0, now - last);
   if (state.playing && gameMode === 'mission' && !specOpen && !document.hidden) {
     remainingSeconds = Math.max(0, remainingSeconds - elapsed / 1000);
