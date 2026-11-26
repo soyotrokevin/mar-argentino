@@ -657,14 +657,6 @@
     border: 1px solid rgba(255, 255, 255, 0.25);
     color: var(--ink);
   }
-  #initial-actions #open-settings-menu,
-  #initial-actions #share-menu {
-    min-height: 40px;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    color: var(--ink-soft);
-    font-size: 12px;
-  }
   #initial-actions button:hover,
   .card button:hover {
     background: rgba(255, 255, 255, 0.22);
@@ -803,8 +795,6 @@
       <div class="start-options">
         <button id="start" type="button">Iniciar misión</button>
         <button id="start-free" type="button">Exploración libre</button>
-        <button id="open-settings-menu" type="button">Ajustes y joystick</button>
-        <button id="share-menu" type="button">Compartir</button>
       </div>
     </div>
     <div id="pause-actions" hidden>
@@ -4702,7 +4692,6 @@ function openSettings(tab = 'general') {
   $('#modal').classList.remove('hidden');
 }
 $('#help').onclick = $('#help2').onclick = () => openSettings('general');
-$('#open-settings-menu').onclick = () => openSettings('joystick');
 $('#goto-joystick').onclick = () => switchSettingsTab('joystick');
 $('#tab-btn-general').onclick = () => switchSettingsTab('general');
 $('#tab-btn-joystick').onclick = () => switchSettingsTab('joystick');
@@ -4724,7 +4713,6 @@ async function shareExperience(btn) {
     }
   } catch (_) {}
 }
-$('#share-menu').onclick = function() { shareExperience(this); };
 $('#share-result').onclick = function() { shareExperience(this); };
 
 function beginDive(mode) {
