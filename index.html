@@ -19,6 +19,13 @@
 <meta name="twitter:description" content="Sumergite desde la superficie hasta el lecho abisal y catalogá la fauna marina en 3D.">
 <meta name="twitter:image" content="https://soyotrokevin.github.io/mar-argentino/preview.jpg">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23072824' stroke='%23ffffff' stroke-opacity='.25' stroke-width='2'/%3E%3Cpath d='M10 34q11-10 22 0t22 0' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M14 44q9-7 18 0t18 0' fill='none' stroke='%239be8d8' stroke-width='2.5' stroke-linecap='round' opacity='.75'/%3E%3C/svg%3E">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LC75PSTKD8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LC75PSTKD8');
+</script>
 <style>
   :root {
     --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -4465,12 +4472,18 @@ function displayTimer() {
   setText($('#timer'), String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'));
   $('#mission-clock').classList.toggle('warning', seconds <= 20);
 }
+function trackEvent(name, params = {}) {
+  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+    window.gtag('event', name, params);
+  }
+}
 function endDive(won) {
   if (gameEnded) return;
   gameEnded = true;
   state.playing = false;
   keys.clear();
   if (specOpen) closeSpecimenInspector();
+  trackEvent('dive_end', { won, found: state.found, mode: gameMode });
   $('#result-title').textContent = won ? '¡Misión cumplida!' : 'Terminó el tiempo';
   $('#result-message').textContent = won
     ? 'Registraste las ' + TOTAL_SPECIES + ' especies antes de que terminara la inmersión.'
@@ -4642,6 +4655,7 @@ function scan() {
 
     if (active.kind === 'whale') audio.playWhaleSong();
     audio.playCaptureSequence();
+    trackEvent('species_capture', { species: active.kind, depth: Math.round(Math.max(0, state.depth)), found: state.found });
 
     // Unlock collection dock slot
     const slot = document.querySelector(`.spec-slot[data-kind="${active.kind}"]`);
@@ -4697,6 +4711,7 @@ $('#back-menu').onclick = $('#result-menu').onclick = () => resetDiveState(null)
 async function shareExperience(btn) {
   const url = (typeof location !== 'undefined' && location.href) ? location.href : 'https://soyotrokevin.github.io/mar-argentino/';
   const orig = btn.textContent;
+  trackEvent('share', { method: navigator.share ? 'web_share' : 'clipboard' });
   try {
     if (navigator.share) {
       await navigator.share({ title: 'Mar Argentino', text: 'Explorá las profundidades del Mar Argentino en 3D', url });
@@ -4714,7 +4729,10 @@ $('#share-result').onclick = function() { shareExperience(this); };
 
 function beginDive(mode) {
   audio.init();
-  if (gameMode === null) gameMode = mode;
+  if (gameMode === null) {
+    gameMode = mode;
+    trackEvent('dive_start', { mode });
+  }
   $('#mission-clock').classList.toggle('hidden', gameMode !== 'mission');
   $('#modal').classList.add('hidden');
   state.playing = true;
