@@ -607,7 +607,9 @@
       <button data-c="left">◀</button>
       <button data-c="forward">▲</button>
       <button data-c="right">▶</button>
-      <button data-c="down">▼</button>
+      <button data-c="reverse" aria-label="Retroceder">↶</button>
+      <button data-c="up" aria-label="Ascender">⇧</button>
+      <button data-c="down" aria-label="Descender">⇩</button>
       <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5l4-3v12l-4-3H4z"/><path d="M16 9l3-2M16 12h4M16 15l3 2"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
       <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
       <button id="audioBtn2" class="icon-control is-on" aria-label="Silenciar sonido" title="Silenciar sonido" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
@@ -1262,7 +1264,10 @@ function floorNormal(x, z) {
   return new THREE.Vector3(hL - hR, 2 * e, hD - hU).normalize();
 }
 
-const groundGeo = new THREE.PlaneGeometry(360, 360, 220, 220);
+const TERRAIN_SIZE = 360;
+const ROV_LIMIT = TERRAIN_SIZE / 2 - 32;
+const FAUNA_LIMIT = TERRAIN_SIZE / 2 - 12;
+const groundGeo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 220, 220);
 groundGeo.rotateX(-Math.PI / 2);
 {
   const p = groundGeo.attributes.position;
@@ -1414,17 +1419,24 @@ const microFaunaSway = [];
     const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.045, 0.9, 6), stalkMat);
     stalk.position.y = 0.45;
     pen.add(stalk);
+    const plumeLights = [];
     for (let k = 0; k < 7; k++) {
       const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), plumeMat);
-      leaf.scale.set(1.6, 0.25, 0.5);
-      leaf.position.set(0, 0.36 + k * 0.08, 0);
-      leaf.rotation.y = k * 0.45;
+      const spread = 1 - Math.abs(k - 2.6) / 6;
+      leaf.scale.set(2.05 * spread, 0.24, 0.54);
+      leaf.position.set(0, 0.34 + k * 0.083, 0);
+      leaf.rotation.set(0, 0.18 * Math.sin(k), 0.15 * Math.sin(k * 0.8));
       pen.add(leaf);
+      for (const side of [-1, 1]) {
+        plumeLights.push(side * 0.20 * spread, leaf.position.y + side * 0.02, 0.02);
+      }
     }
+    const glow = glowPoints(plumeLights, 0x70eabf, 72);
+    pen.add(glow);
     pen.position.set(x, floor(x, z) - 0.05, z);
     pen.scale.setScalar(0.65 + rnd() * 0.55);
     scene.add(pen);
-    microFaunaSway.push({ mesh: pen, phase: rnd() * 6.28 });
+    microFaunaSway.push({ mesh: pen, glow, phase: rnd() * 6.28 });
   }
 
   // Brittle stars (Ophiuroidea)
@@ -1572,58 +1584,77 @@ const surfaceDust = new THREE.Points(surfDustGeo, surfaceDustMat);
 surfaceDust.frustumCulled = false;
 scene.add(surfaceDust);
 
-// Benthic Silt Cloud kicked up when ROV flies low over sediment
-const siltCount = 420;
+// Emit sediment in world space so the plume stays behind when the ROV moves.
+const siltCount = 640;
 const siltPos = new Float32Array(siltCount * 3);
-const siltSeed = new Float32Array(siltCount);
-for (let i = 0; i < siltCount; i++) {
-  siltPos[i * 3]     = (rnd() - 0.5) * 14;
-  siltPos[i * 3 + 1] = rnd() * 2.2;
-  siltPos[i * 3 + 2] = -2 - rnd() * 14;
-  siltSeed[i] = rnd() * 6.28;
-}
+const siltBirth = new Float32Array(siltCount).fill(-10);
 const siltGeo = new THREE.BufferGeometry();
-siltGeo.setAttribute('position', new THREE.BufferAttribute(siltPos, 3));
-siltGeo.setAttribute('phase', new THREE.BufferAttribute(siltSeed, 1));
+const siltOrigins = new THREE.BufferAttribute(siltPos, 3).setUsage(THREE.DynamicDrawUsage);
+const siltTimes = new THREE.BufferAttribute(siltBirth, 1).setUsage(THREE.DynamicDrawUsage);
+siltGeo.setAttribute('position', siltOrigins);
+siltGeo.setAttribute('born', siltTimes);
 const siltMat = new THREE.ShaderMaterial({
   transparent: true,
   depthWrite: false,
-  uniforms: {
-    uTime: { value: 0 },
-    uIntensity: { value: 0 },
-    uCenter: { value: new THREE.Vector3() }
-  },
+  uniforms: { uTime: { value: 0 }, uLight: { value: 1 } },
   vertexShader: `
-    attribute float phase;
+    attribute float born;
     uniform float uTime;
-    uniform vec3 uCenter;
     varying float vAlpha;
+    varying vec3 vView;
     void main() {
-      vec3 p = position;
-      p.x += sin(uTime * 0.8 + phase) * 0.9;
-      p.z += cos(uTime * 0.65 + phase) * 0.9;
-      p.y += fract(phase * 0.16 + uTime * 0.14) * 1.4;
-      p += uCenter;
+      float age = uTime - born;
+      float phase = dot(position, vec3(4.2, 0.7, 5.8));
+      vec3 p = position + vec3(cos(phase) * 0.37, 1.02, sin(phase) * 0.37) * age;
       vec4 mv = viewMatrix * vec4(p, 1.0);
-      vAlpha = 1.0 - smoothstep(4.0, 18.0, -mv.z);
+      vView = mv.xyz;
+      vAlpha = smoothstep(0.0, 0.16, age) * (1.0 - smoothstep(1.0, 4.1, age));
       gl_Position = projectionMatrix * mv;
-      gl_PointSize = clamp(240.0 / max(1.0, -mv.z), 4.0, 46.0);
+      gl_PointSize = clamp((118.0 + age * 46.0) / max(1.0, -mv.z), 2.0, 66.0);
     }
   `,
   fragmentShader: `
-    uniform float uIntensity;
+    uniform float uLight;
     varying float vAlpha;
+    varying vec3 vView;
     void main() {
       float r = length(gl_PointCoord - 0.5) * 2.0;
-      if (r > 1.0) discard;
-      float soft = exp(-r * r * 2.6);
-      gl_FragColor = vec4(0.55, 0.53, 0.45, soft * vAlpha * uIntensity * 0.16);
+      float beam = smoothstep(0.45, 0.92, dot(normalize(vView), normalize(vec3(0.0, -0.37, -1.0))));
+      float fade = exp(-length(vView) * 0.085);
+      float falloff = 1.0 - smoothstep(0.05, 1.0, r);
+      gl_FragColor = vec4(0.57, 0.40, 0.25, falloff * vAlpha * fade * beam * uLight * 0.58);
     }
   `
 });
 const siltCloud = new THREE.Points(siltGeo, siltMat);
 siltCloud.frustumCulled = false;
 scene.add(siltCloud);
+let siltCursor = 0;
+let nextSiltTime = 0;
+let sedimentSeed = 4701;
+function sedimentNoise() {
+  sedimentSeed = (Math.imul(sedimentSeed, 1664525) + 1013904223) >>> 0;
+  return sedimentSeed / 4294967296;
+}
+function stirSediment(altitude, motion, x, z, heading, time) {
+  siltMat.uniforms.uTime.value = time;
+  siltMat.uniforms.uLight.value = state.light ? 1 : 0;
+  if (altitude >= 6 || motion < 0.16 || time < nextSiltTime) return;
+  nextSiltTime = time + 0.09;
+  const intensity = Math.min(1, motion) * (1 - THREE.MathUtils.smoothstep(altitude, 2.4, 6));
+  const count = Math.ceil(intensity * 17);
+  for (let i = 0; i < count; i++) {
+    const ahead = 2.5 + sedimentNoise() * 5;
+    const across = (sedimentNoise() - 0.5) * 4;
+    const px = x - Math.sin(heading) * ahead + Math.cos(heading) * across;
+    const pz = z - Math.cos(heading) * ahead - Math.sin(heading) * across;
+    siltOrigins.setXYZ(siltCursor, px, floor(px, pz) + 0.16 + sedimentNoise() * 0.3, pz);
+    siltTimes.setX(siltCursor, time);
+    siltCursor = (siltCursor + 1) % siltCount;
+  }
+  siltOrigins.needsUpdate = true;
+  siltTimes.needsUpdate = true;
+}
 
 // Bioluminescent Plankton Field visible during descent
 const bioCount = 260;
@@ -1722,6 +1753,57 @@ function makeTubeFromPoints(points, radiusStart, radiusEnd, tubularSegs, radialS
 }
 
 // 1) Medusa Abisal (Crossota norvegica)
+function glowPoints(positions, color, size) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const material = new THREE.ShaderMaterial({
+    uniforms: { tint: { value: new THREE.Color(color) }, size: { value: size }, pulse: { value: 1 } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      uniform float size;
+      varying float distanceToEye;
+      void main() {
+        vec4 view = modelViewMatrix * vec4(position, 1.0);
+        distanceToEye = length(view.xyz);
+        gl_Position = projectionMatrix * view;
+        gl_PointSize = clamp(size / max(1.0, -view.z), 1.0, 54.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 tint;
+      uniform float pulse;
+      varying float distanceToEye;
+      void main() {
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        float halo = exp(-r * r * 2.9) * (1.0 - smoothstep(0.55, 1.0, r));
+        gl_FragColor = vec4(tint, halo * pulse * exp(-distanceToEye * 0.025));
+        #include <colorspace_fragment>
+      }
+    `
+  });
+  return new THREE.Points(geometry, material);
+}
+
+function colorTissue(geometry, dark, light, scale) {
+  const position = geometry.attributes.position;
+  const colors = new Float32Array(position.count * 3);
+  const shadow = new THREE.Color(dark);
+  const base = new THREE.Color(light);
+  const color = new THREE.Color();
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i) * scale;
+    const y = position.getY(i) * scale;
+    const z = position.getZ(i) * scale;
+    const mottling = fbm(x + 8, y, z, 3);
+    const speckling = noise3(x * 3.8, y * 3.8, z * 3.8);
+    color.copy(shadow).lerp(base, THREE.MathUtils.clamp(0.15 + mottling * 0.7 + speckling * 0.24, 0, 1));
+    color.toArray(colors, i * 3);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
+
 function buildJellyfish(paletteIdx = 0) {
   const palettes = [
     { bell: 0x7a57b5, bellEm: 0x2f125c, inner: 0xd12844, innerEm: 0x850e28, canal: 0xe377ff, canalEm: 0xc247ff, oral: 0xdf9cff, oralEm: 0x5c1c85, tent: 0xc9b4ff, tentEm: 0x45247a },
@@ -1757,18 +1839,20 @@ function buildJellyfish(paletteIdx = 0) {
     bellGeo.computeVertexNormals();
   }
 
+  colorTissue(bellGeo, pal.bellEm, pal.bell, 5.5);
   const bellMat = new THREE.MeshPhysicalMaterial({
-    color: pal.bell,
+    vertexColors: true,
     emissive: pal.bellEm,
     emissiveIntensity: 0.72,
     roughness: 0.14,
     metalness: 0.0,
-    iridescence: 0.88,
+    iridescence: 0.34,
     iridescenceIOR: 1.33,
     clearcoat: 1.0,
     clearcoatRoughness: 0.1,
     transparent: true,
-    opacity: 0.74,
+    opacity: 0.56,
+    depthWrite: false,
     side: THREE.DoubleSide,
     bumpMap: jellyBumpTex,
     bumpScale: 0.025
@@ -1805,6 +1889,8 @@ function buildJellyfish(paletteIdx = 0) {
     emissiveIntensity: 1.15,
     roughness: 0.2
   });
+  const rimLights = [];
+  const rimGeo = new THREE.SphereGeometry(0.025, 8, 6);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const pts = [
@@ -1814,8 +1900,13 @@ function buildJellyfish(paletteIdx = 0) {
       new THREE.Vector3(Math.cos(a) * 1.12, -0.22, Math.sin(a) * 1.12)
     ];
     const canal = makeTubeFromPoints(pts, 0.018, 0.01, 10, 4, canalMat);
-    bell.add(canal);
+    const rim = new THREE.Mesh(rimGeo, canalMat);
+    rim.position.set(Math.cos(a) * 1.18, -0.26, Math.sin(a) * 1.18);
+    rimLights.push(...rim.position.toArray());
+    bell.add(canal, rim);
   }
+  const rimGlow = glowPoints(rimLights, pal.canal, 115);
+  bell.add(rimGlow);
 
   // 4 Frilled Oral Arms
   const oralMat = new THREE.MeshPhysicalMaterial({
@@ -1879,9 +1970,11 @@ function buildJellyfish(paletteIdx = 0) {
     const sx = 1.0 - contract * 0.13 + (1 - contract) * 0.05;
     const sy = 1.0 + contract * 0.16;
     bell.scale.set(sx, sy, sx);
+    bellMat.opacity = 0.53 + contract * 0.10;
 
     bellMat.emissiveIntensity = 0.72 + capturePulse * 1.3;
-    canalMat.emissiveIntensity = 1.15 + Math.sin(time * 4) * 0.28 + capturePulse * 1.8;
+    canalMat.emissiveIntensity = 1.15 + contract * 0.7 + capturePulse * 1.8;
+    rimGlow.material.uniforms.pulse.value = 0.52 + contract * 0.38 + capturePulse * 0.3;
 
     for (const item of animatedTubes) {
       const geo = item.mesh.geometry;
@@ -1912,23 +2005,22 @@ function buildSquid() {
 
   // Fusiform translucent mantle along Z (+Z apex, -Z collar)
   const mantleProf = [];
-  for (let i = 0; i <= 20; i++) {
-    const t = i / 20;
+  const mantleRadius = t => Math.pow(Math.sin(t * Math.PI * 0.79), 0.72) * 0.36;
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
     const z = 1.28 - t * 1.65; // +1.28 tip to -0.37 collar
-    const r = t < 0.12
-      ? Math.sin((t / 0.12) * Math.PI * 0.5) * 0.18
-      : Math.sin(Math.pow(t, 0.72) * Math.PI * 0.82) * 0.36;
-    mantleProf.push(new THREE.Vector2(Math.max(0.004, r), z));
+    mantleProf.push(new THREE.Vector2(Math.max(0.004, mantleRadius(t)), z));
   }
-  const mantleGeo = new THREE.LatheGeometry(mantleProf, 28);
+  const mantleGeo = new THREE.LatheGeometry(mantleProf.reverse(), 40);
   mantleGeo.rotateX(Math.PI / 2); // Y -> Z axis
 
+  colorTissue(mantleGeo, 0x422431, 0xaf646d, 19);
   const mantleMat = new THREE.MeshPhysicalMaterial({
-    color: 0xa23f6e,
+    vertexColors: true,
     emissive: 0x450b29,
     emissiveIntensity: 0.6,
-    roughness: 0.22,
-    clearcoat: 0.85,
+    roughness: 0.39,
+    clearcoat: 0.32,
     transparent: true,
     opacity: 0.82,
     side: THREE.DoubleSide
@@ -1958,18 +2050,24 @@ function buildSquid() {
     opacity: 0.85,
     side: THREE.DoubleSide
   });
-  const finGeo = new THREE.SphereGeometry(0.32, 12, 8);
-  finGeo.scale(1.35, 0.08, 1.45);
+  const finShape = new THREE.Shape();
+  finShape.moveTo(0, -0.46);
+  finShape.bezierCurveTo(0.15, -0.40, 0.46, -0.2, 0.48, -0.06);
+  finShape.bezierCurveTo(0.45, 0.14, 0.19, 0.26, 0, 0.36);
+  finShape.quadraticCurveTo(-0.04, 0, 0, -0.46);
+  const finGeo = new THREE.ShapeGeometry(finShape, 16);
+  finGeo.rotateX(Math.PI / 2);
   const finL = new THREE.Mesh(finGeo, finMat);
-  finL.position.set(-0.28, 0.04, 0.96);
-  finL.rotation.y = 0.45;
+  finL.position.set(-0.18, 0.04, 0.83);
+  finL.scale.x = -1;
   const finR = new THREE.Mesh(finGeo, finMat);
-  finR.position.set(0.28, 0.04, 0.96);
-  finR.rotation.y = -0.45;
+  finR.position.set(0.18, 0.04, 0.83);
   mantle.add(finL, finR);
 
   // Head & Large Bioluminescent Deep-Sea Eyes
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 14, 10), mantleMat);
+  const headGeo = new THREE.SphereGeometry(0.27, 24, 16);
+  colorTissue(headGeo, 0x472532, 0xbf7a78, 22);
+  const head = new THREE.Mesh(headGeo, mantleMat);
   head.scale.set(1.05, 0.92, 1.25);
   head.position.z = -0.52;
   group.add(head);
@@ -1982,26 +2080,38 @@ function buildSquid() {
     roughness: 0.2
   });
   const eyeGeo = new THREE.SphereGeometry(0.095, 10, 8);
-  const ringGeo = new THREE.TorusGeometry(0.105, 0.016, 6, 16);
+  const ringGeo = new THREE.TorusGeometry(0.105, 0.011, 6, 20);
+  const irisMat = new THREE.MeshStandardMaterial({ color: 0x936e47, roughness: 0.36 });
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(eyeGeo, eyeDarkMat);
     eye.position.set(side * 0.23, 0.03, -0.52);
-    const ring = new THREE.Mesh(ringGeo, eyeRingMat);
+    const ring = new THREE.Mesh(ringGeo, irisMat);
+    const eyeScale = side < 0 ? 1.28 : 0.78;
+    eye.scale.setScalar(eyeScale);
+    ring.scale.setScalar(eyeScale);
     ring.position.set(side * 0.24, 0.03, -0.52);
     ring.rotation.y = side * Math.PI * 0.45;
     group.add(eye, ring);
   }
 
   // Ventral Bioluminescent Photophores
-  const photoGeo = new THREE.SphereGeometry(0.028, 6, 5);
-  for (let i = 0; i < 14; i++) {
-    const f = i / 13;
-    const ph = new THREE.Mesh(photoGeo, eyeRingMat);
-    const z = -0.25 + f * 1.15;
-    const rad = Math.sin(Math.pow(1 - f * 0.8, 0.72) * Math.PI * 0.8) * 0.32;
-    ph.position.set((i % 2 === 0 ? -1 : 1) * rad * 0.55, -rad * 0.85, z);
-    mantle.add(ph);
+  const photoGeo = new THREE.SphereGeometry(0.022, 8, 6);
+  const photoPositions = [];
+  const photophores = new THREE.InstancedMesh(photoGeo, eyeRingMat, 36);
+  const placement = new THREE.Object3D();
+  for (let i = 0; i < 9; i++) {
+    const t = 0.21 + i * 0.083;
+    const radius = mantleRadius(t) + 0.012;
+    for (const angle of [-2.56, -1.93, -1.21, -0.58]) {
+      placement.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 1.28 - t * 1.65);
+      placement.scale.setScalar(i % 3 === 0 ? 1.2 : 0.75);
+      placement.updateMatrix();
+      photophores.setMatrixAt(photoPositions.length / 3, placement.matrix);
+      photoPositions.push(...placement.position.toArray());
+    }
   }
+  const photoGlow = glowPoints(photoPositions, 0x53e8ff, 90);
+  mantle.add(photophores, photoGlow);
 
   // 8 Arms + 2 Long Tentacular Clubs trailing toward -Z
   const armMat = new THREE.MeshStandardMaterial({
@@ -2052,7 +2162,8 @@ function buildSquid() {
     finR.rotation.z = -Math.sin(time * 4.2) * 0.35;
 
     mantleMat.emissiveIntensity = 0.6 + capturePulse * 1.1;
-    eyeRingMat.emissiveIntensity = 1.35 + Math.sin(time * 3.5) * 0.3 + capturePulse * 1.6;
+    eyeRingMat.emissiveIntensity = 1.35 + jet * 0.65 + capturePulse * 1.6;
+    photoGlow.material.uniforms.pulse.value = 0.51 + jet * 0.36 + capturePulse * 0.3;
 
     for (const item of arms) {
       const geo = item.mesh.geometry;
@@ -2409,7 +2520,8 @@ function buildCoral() {
       z *= lobe * bump;
       y *= bump;
       p.setXYZ(i, x + 0.1, y + 1.42, z);
-      const t = Math.max(0, Math.min(1, y * 0.9 + 0.4));
+      const texture = fbm(x * 13, y * 18, z * 13, 3);
+      const t = THREE.MathUtils.clamp(y * 0.72 + texture * 0.6, 0, 1);
       tmp.copy(cDark).lerp(cBright, t);
       cols[i * 3] = tmp.r; cols[i * 3 + 1] = tmp.g; cols[i * 3 + 2] = tmp.b;
     }
@@ -2418,8 +2530,8 @@ function buildCoral() {
   }
   const capMat = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
-    roughness: 0.38,
-    clearcoat: 0.7,
+    roughness: 0.64,
+    clearcoat: 0.23,
     clearcoatRoughness: 0.22,
     sheen: 0.85,
     sheenColor: new THREE.Color(0xff9c8e),
@@ -2690,12 +2802,13 @@ function buildCucumber() {
     bodyGeo.userData.restPos = new Float32Array(p.array);
   }
 
+  colorTissue(bodyGeo, 0x4c293c, 0xb68e9a, 16);
   const bodyMat = new THREE.MeshPhysicalMaterial({
-    color: 0xa15878,
+    vertexColors: true,
     emissive: 0x260c1b,
     emissiveIntensity: 0.3,
-    roughness: 0.22,
-    clearcoat: 0.82,
+    roughness: 0.46,
+    clearcoat: 0.32,
     clearcoatRoughness: 0.18,
     transparent: true,
     opacity: 0.82,
@@ -3307,6 +3420,11 @@ function scan() {
   audio.init();
   const canObserve = state.light || state.depth < 480;
   if (active && canObserve) {
+    if (recordedKinds.has(active.kind)) {
+      const specimen = fauna.find(animal => animal.kind === active.kind && animal.found);
+      openSpecimenInspector(active.kind, specimen?.capturedDepth);
+      return;
+    }
     active.found = true;
     active.capturePulse = 1.0;
     active.capturedDepth = state.depth;
@@ -3334,13 +3452,13 @@ function scan() {
     if (slot) slot.classList.add('unlocked');
 
     setText(hudEls.status, state.found === TOTAL_SPECIES
-      ? 'Catálogo completo (7 / 7) — Elegí una especie abajo para revisarla en 3D'
-      : 'Espécimen catalogado: ' + active.name);
+      ? 'Catálogo completo · 7 / 7'
+      : 'Registraste: ' + active.name + ' · ' + state.found + ' / ' + TOTAL_SPECIES);
     statusUntil = state.time + 4.5;
     telemetry();
 
     if (state.found === TOTAL_SPECIES && gameMode === 'mission') endDive(true);
-    else openSpecimenInspector(active.kind, state.depth);
+
   } else {
     setText(hudEls.status, canObserve
       ? 'Acercate e iluminá un organismo para catalogarlo'
@@ -3417,14 +3535,18 @@ addEventListener('keydown', e => {
   if (!e.repeat && e.code === 'KeyL') { audio.init(); toggleLight(); }
   if (!e.repeat && e.code === 'KeyE') scan();
   if (!e.repeat && e.code === 'KeyM') toggleAudio();
-  if (!e.repeat && e.code === 'Escape' && specOpen) closeSpecimenInspector();
+  if (!e.repeat && e.code === 'Escape') {
+    if (specOpen) closeSpecimenInspector();
+    else if (state.playing) $('#help').click();
+    else if (gameMode && !gameEnded) $('#resume').click();
+  }
   keys.add(e.code);
 });
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
 document.querySelectorAll('[data-c]').forEach(b => {
-  const k = { left: 'KeyA', right: 'KeyD', forward: 'KeyW', down: 'ArrowDown' }[b.dataset.c];
+  const k = { left: 'KeyA', right: 'KeyD', forward: 'KeyW', reverse: 'KeyS', up: 'ArrowUp', down: 'ArrowDown' }[b.dataset.c];
   b.onpointerdown = e => {
     e.preventDefault();
     audio.init();
@@ -3496,7 +3618,6 @@ function update() {
   surfaceDustMat.uniforms.uSurfaceLight.value = surfFactor;
   bioSparkMat.uniforms.uTime.value = state.time;
   coneMat.uniforms.uTime.value = state.time;
-  siltMat.uniforms.uTime.value = state.time;
   xrayMaterial.uniforms.uTime.value = state.time;
 
   // Smooth hydrodynamic motion with momentum (longer surface-to-bottom descent)
@@ -3512,8 +3633,13 @@ function update() {
   state.depth = Math.max(0, Math.min(3600, state.depth + state.velDepth));
   updateWaterOptics(state.depth);
 
-  camera.position.x -= Math.sin(state.heading) * state.velForward;
-  camera.position.z -= Math.cos(state.heading) * state.velForward;
+  const previousX = camera.position.x;
+  const previousZ = camera.position.z;
+  const nextX = previousX - Math.sin(state.heading) * state.velForward;
+  const nextZ = previousZ - Math.cos(state.heading) * state.velForward;
+  camera.position.x = THREE.MathUtils.clamp(nextX, -ROV_LIMIT, ROV_LIMIT);
+  camera.position.z = THREE.MathUtils.clamp(nextZ, -ROV_LIMIT, ROV_LIMIT);
+  const atBoundary = Math.abs(nextX) > ROV_LIMIT || Math.abs(nextZ) > ROV_LIMIT;
 
   const groundY = floor(camera.position.x, camera.position.z);
   const targetY = Math.max(groundY + 1.85, SURFACE_Y - state.depth / 19.6);
@@ -3538,21 +3664,25 @@ function update() {
 
   // Benthic silt kick-up near seafloor
   const alt = Math.max(0, camera.position.y - groundY);
-  const siltLevel = state.light ? Math.max(0, Math.min(1, (5.5 - alt) / 4.0)) : 0;
-  siltMat.uniforms.uIntensity.value = siltLevel * (0.4 + Math.min(1, thrustAmt) * 0.8);
-  siltMat.uniforms.uCenter.value.set(camera.position.x, groundY - 0.1, camera.position.z);
+  const horizontalMotion = Math.hypot(camera.position.x - previousX, camera.position.z - previousZ) / 0.115;
+  const nearBottomMotion = horizontalMotion + Math.abs(state.velYaw) / 0.019 * 0.55
+    + Math.max(0, state.velDepth) / 2.35 * 0.45;
+  stirSediment(alt, nearBottomMotion, camera.position.x, camera.position.z, state.heading, state.time);
 
   // Update sea pen sway
   for (const s of microFaunaSway) {
     s.mesh.rotation.z = Math.sin(state.time * 1.2 + s.phase) * 0.08;
+    s.glow.material.uniforms.pulse.value = 0.28 + 0.26 * Math.pow(Math.max(0, Math.sin(state.time * 0.9 + s.phase)), 3);
   }
 
   // Update organisms, recycle distant fauna ahead of camera, and find active target
+  camera.updateMatrixWorld();
   camera.getWorldDirection(direction);
   const fx = -Math.sin(state.heading), fz = -Math.cos(state.heading);
   const rx = -fz, rz = fx;
   active = null;
   let best = Infinity;
+  let bestTargetScore = Infinity;
 
   for (const a of fauna) {
     const dx = a.baseX - camera.position.x;
@@ -3560,11 +3690,11 @@ function update() {
     const horizDist = Math.hypot(dx, dz);
     const dotH = dx * fx + dz * fz;
 
-    if (horizDist > 58 || (horizDist > 42 && dotH < -14)) {
+    if (Math.abs(a.baseX) > FAUNA_LIMIT || Math.abs(a.baseZ) > FAUNA_LIMIT || horizDist > 58 || (horizDist > 42 && dotH < -14)) {
       const fwd = 36 + rnd() * 18;
       const lat = (rnd() - 0.5) * 60;
-      a.baseX = camera.position.x + fx * fwd + rx * lat;
-      a.baseZ = camera.position.z + fz * fwd + rz * lat;
+      a.baseX = THREE.MathUtils.clamp(camera.position.x + fx * fwd + rx * lat, -FAUNA_LIMIT, FAUNA_LIMIT);
+      a.baseZ = THREE.MathUtils.clamp(camera.position.z + fz * fwd + rz * lat, -FAUNA_LIMIT, FAUNA_LIMIT);
       if (a.alignFloor) {
         a.baseY = floor(a.baseX, a.baseZ) + a.yOffset;
         a.group.position.set(a.baseX, a.baseY, a.baseZ);
@@ -3629,13 +3759,26 @@ function update() {
       continue;
     }
     a.group.visible = true;
-    a.group.userData.animate(state.time, dt, a.capturePulse, speedMult);
+    // Keep nearby silhouettes smooth while reducing mesh updates for distant fauna.
+    const interval = dist < 23 ? 0 : dist < 42 ? 1 / 30 : 1 / 15;
+    if (!a.lastPose || state.time - a.lastPose >= interval - 0.001) {
+      a.group.userData.animate(state.time, state.time - (a.lastPose ?? state.time - dt), a.capturePulse, speedMult);
+      a.lastPose = state.time;
+    }
 
-    const maxRange = a.kind === 'whale' ? 36 : 17;
-    const minDot = a.kind === 'whale' ? 0.74 : 0.87;
-    if (dist < maxRange && toAnimal.normalize().dot(direction) > minDot && dist < best) {
+    const range = a.kind === 'whale' ? 39 : 20;
+    if (dist >= range) continue;
+    projPos.copy(a.group.position).project(camera);
+    if (Math.abs(projPos.x) > 0.95 || Math.abs(projPos.y) > 0.92 || projPos.z >= 1) continue;
+    const alignment = toAnimal.normalize().dot(direction);
+    if (alignment < 0.83) continue;
+    const score = (projPos.x ** 2 + projPos.y ** 2) * 2
+      + dist / range * 0.25 + (recordedKinds.has(a.kind) ? 0.24 : 0)
+      - (a === prevActive ? 0.035 : 0);
+    if (score < bestTargetScore) {
       active = a;
       best = dist;
+      bestTargetScore = score;
     }
   }
 
@@ -3702,6 +3845,10 @@ function update() {
     const p = ef.age / ef.duration;
     if (p >= 1) {
       scene.remove(ef.fx);
+      ef.ringMat.dispose();
+      ef.shellMat.dispose();
+      ef.pMat.dispose();
+      ef.pts.geometry.dispose();
       scanEffects.splice(i, 1);
       continue;
     }
@@ -3742,7 +3889,9 @@ function update() {
     reticle.classList.remove('visible');
   }
 
-  if (state.time > statusUntil) {
+  if (atBoundary) {
+    setText(hudEls.status, 'Límite del área de exploración · cambiá de rumbo');
+  } else if (state.time > statusUntil) {
     setText(hudEls.status, active && canObserve
       ? active.name + (recordedKinds.has(active.kind) ? ' — catalogado · abrí su lámina abajo' : ' — presioná [E] para registrar')
       : (state.found === TOTAL_SPECIES ? 'Catálogo completo · 7 / 7 especies registradas' : 'Explorá la superficie verdosa y descendé hacia el abismo'));
