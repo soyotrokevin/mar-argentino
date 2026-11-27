@@ -4813,10 +4813,8 @@ function scan() {
     const slot = document.querySelector(`.spec-slot[data-kind="${active.kind}"]`);
     if (slot) slot.classList.add('unlocked');
 
-    setText(hudEls.status, state.found === TOTAL_SPECIES
-      ? 'Catálogo completo · 7 / 7'
-      : 'Registraste: ' + active.name + ' · ' + state.found + ' / ' + TOTAL_SPECIES);
-    statusUntil = state.time + 4.5;
+    setText(hudEls.status, '');
+    statusUntil = 0;
     telemetry();
 
     if (state.found === TOTAL_SPECIES && gameMode === 'mission') endDive(true);
