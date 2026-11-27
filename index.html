@@ -664,7 +664,7 @@
   }
   #initial-actions button:focus-visible, .controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  #journal-toggle, #help2, .journal-header, .journal-backdrop { display: none; }
+  #journal-toggle, #help2, .journal-header, .journal-backdrop, .species-icon { display: none; }
   @media (max-width: 760px), (pointer: coarse), (max-width: 1000px) and (max-height: 460px) {
     .hud {
       padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
@@ -720,16 +720,45 @@
       display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
       align-content: start; padding: clamp(14px, 5vw, 24px);
       overflow: auto; overscroll-behavior: contain; pointer-events: auto;
-      background: rgba(8, 23, 30, .96); border: 1px solid #ffffff26; border-radius: 14px;
+      background: radial-gradient(ellipse at top right, #164136, transparent 58%), #091a22;
+      border: 1px solid #ffffff26; border-radius: 14px;
       box-shadow: 0 20px 60px #0008;
     }
     .journal-header {
-      display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between;
-      gap: 8px; padding-bottom: 10px; border-bottom: 1px solid #ffffff26;
+      display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto;
+      align-items: center; gap: 10px 12px; padding-bottom: 10px;
     }
-    .journal-header h2 { margin: 0; color: white; font: 400 25px var(--font-serif); }
+    .journal-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
+    .journal-header h2 { margin: 0; color: white; font: 400 clamp(26px, 8vw, 36px) var(--font-serif); }
+    #journal-progress-label { color: #a9c8bf; font-size: 12px; font-variant-numeric: tabular-nums; }
+    #journal-progress {
+      grid-column: 1 / -1; width: 100%; height: 5px; color: #6fe5a5; accent-color: #6fe5a5;
+    }
     #journal-close { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; }
-    .collection-dock .spec-slot { min-height: 54px; padding: 8px 10px; border-radius: 9px; }
+    .collection-dock .spec-slot {
+      position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px; min-width: 0; min-height: 92px; padding: 9px; border-radius: 12px;
+      background: #0c2129; border-color: #91b4b132; color: #a1b8bb; text-align: center;
+      font-size: 12px;
+    }
+    .collection-dock .spec-slot[data-kind="whale"] {
+      grid-column: span 2; flex-direction: row; gap: 14px;
+    }
+    .collection-dock .spec-slot .slot-dot {
+      position: absolute; top: 10px; right: 10px; width: 6px; height: 6px;
+    }
+    .collection-dock .species-icon {
+      display: block; width: 50px; height: 42px; fill: none; stroke: currentColor;
+      stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; opacity: .8;
+    }
+    .collection-dock .spec-slot[data-kind="whale"] .species-icon { width: 77px; }
+    .collection-dock .spec-slot.unlocked {
+      background: linear-gradient(150deg, #17664c, #0d3d32); color: #e9fff2;
+      border-color: #63d698; box-shadow: inset 0 0 18px #72eda31a;
+    }
+    .collection-dock .spec-slot.unlocked .species-icon { color: #a5ffca; opacity: 1; }
+    .collection-dock .spec-slot.unlocked .slot-dot { background: #83f2ab; box-shadow: 0 0 8px #67d69c; }
+    .collection-dock .spec-slot.unlocked:hover { filter: brightness(1.12); }
     @media (min-width: 620px) {
       .journal-open .collection-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
@@ -840,7 +869,7 @@
   <div class="bottom">
     <div class="bitacora-box">
       <div class="bitacora-head">
-        <span class="label">Catálogo biológico</span>
+        <span class="label">Catálogo</span>
         <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock"><span>Catálogo</span></button>
         <span id="count" class="value">0 / 7</span>
       </div>
@@ -848,16 +877,20 @@
       <div id="journal-backdrop" class="journal-backdrop" aria-hidden="true"></div>
       <div class="collection-dock" id="collection-dock">
         <header class="journal-header">
-          <h2 id="journal-title">Catálogo biológico</h2>
+          <div class="journal-heading">
+            <h2 id="journal-title">Catálogo</h2>
+            <span id="journal-progress-label">0 / 7 registradas</span>
+          </div>
           <button id="journal-close" type="button" aria-label="Cerrar catálogo">×</button>
+          <progress id="journal-progress" value="0" max="7" aria-label="Especies registradas"></progress>
         </header>
-        <button type="button" class="spec-slot" data-kind="whale"><span class="slot-dot"></span><span>Ballena</span></button>
-        <button type="button" class="spec-slot" data-kind="jelly"><span class="slot-dot"></span><span>Medusa</span></button>
-        <button type="button" class="spec-slot" data-kind="squid"><span class="slot-dot"></span><span>Calamar</span></button>
-        <button type="button" class="spec-slot" data-kind="fish"><span class="slot-dot"></span><span>Pez</span></button>
-        <button type="button" class="spec-slot" data-kind="coral"><span class="slot-dot"></span><span>Coral</span></button>
-        <button type="button" class="spec-slot" data-kind="star"><span class="slot-dot"></span><span>Estrella</span></button>
-        <button type="button" class="spec-slot" data-kind="cucumber"><span class="slot-dot"></span><span>Holoturia</span></button>
+        <button type="button" class="spec-slot" data-kind="whale"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 70 46" aria-hidden="true"><path d="M5 26c1-7 9-11 19-9 11 2 17 7 30 2l3-5c4-2 8-2 11-1-2 3-5 5-8 7 1 2 3 4 5 5-4 1-7 1-11-2-11 9-38 13-47 6ZM26 28c0 3-2 6-5 8 5 0 10-3 13-8M14 23h.2"/></svg><span>Ballena</span></button>
+        <button type="button" class="spec-slot" data-kind="jelly"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M7 23C7 12 15 6 24 6s17 6 17 17c-6 5-27 5-34 0ZM12 24c0 5 5 6 4 12l-1 4m7-14c-3 6 4 7 4 14m7-14c2 3-5 9-2 15M15 19c2-4 5-7 9-8"/></svg><span>Medusa</span></button>
+        <button type="button" class="spec-slot" data-kind="squid"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M24 5c6 6 10 13 8 21-4 3-12 3-16 0-2-8 2-15 8-21Zm-4 5-9 11 5 2m12-13 9 11-5 2M18 28c-3 4-5 7-2 12m6-11c-2 5 1 7-1 13m5-13c3 5-1 7 2 12m3-13c5 3 5 7 4 11"/></svg><span>Calamar</span></button>
+        <button type="button" class="spec-slot" data-kind="fish"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M5 23c7-10 20-12 31-3l8-6v18l-8-6c-11 9-24 7-31-3Zm13-8 5-5 7 6m-10 6c2 2 2 5 0 7m-7-7h.2"/></svg><span>Pez</span></button>
+        <button type="button" class="spec-slot" data-kind="coral"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M24 40V12m0 19c-4-5-10-5-13-10l-1-8m14 12c6-5 11-7 13-15m-4 8 7 1m-25 6-8-1m17-7-6-6V6m6 9 5-6V5M14 40h20"/></svg><span>Coral</span></button>
+        <button type="button" class="spec-slot" data-kind="star"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M24 4c2 0 4 11 6 13 2 1 13-1 14 1s-8 8-9 10c0 3 5 12 3 14s-11-6-14-6-12 8-14 6 3-11 3-14C12 26 3 20 4 18s12 0 14-1c2-2 4-13 6-13Zm0 16v7m-3-3h6"/></svg><span>Estrella</span></button>
+        <button type="button" class="spec-slot" data-kind="cucumber"><span class="slot-dot"></span><svg class="species-icon" viewBox="0 0 48 46" aria-hidden="true"><path d="M5 28c0-5 8-9 14-10 8-2 18-4 23 2 4 5-1 10-8 12l-10 2c-10 2-19 0-19-6Zm5 4-1 5m7-2v4m7-4 1 4m7-6 2 4m4-6 3 4M16 24h.2m7-2h.2m9-2h.2m3 6h.2"/></svg><span>Holoturia</span></button>
       </div>
     </div>
 
@@ -870,7 +903,7 @@
 
     <div class="controls mobile">
       <div class="touch-stick" id="touch-stick" role="group" aria-label="Palanca táctil para avanzar, retroceder y girar"><span class="touch-knob"></span></div>
-      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg><span aria-hidden="true">Capturar</span></button>
+      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg><span aria-hidden="true">Registrar</span></button>
       <div class="touch-actions">
         <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h7l3-3v10l-3-3H4zM16 8l4-2M17 12h4M16 16l4 2"/><path d="M7 10v4"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
         <button type="button" data-depth="-1" aria-label="Ascender"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 14l7-7 7 7"/></svg></button>
@@ -4695,7 +4728,11 @@ function telemetry(precomputedAlt) {
   setText(hudEls.depth, d + ' m');
   const deg = Math.round(((-state.heading * 180 / Math.PI) % 360 + 360) % 360);
   setText(hudEls.heading, String(deg).padStart(3, '0') + '°');
-  setText(hudEls.count, state.found + ' / ' + TOTAL_SPECIES);
+  const progress = state.found + ' / ' + TOTAL_SPECIES;
+  setText(hudEls.count, progress);
+  setText($('#journal-progress-label'), progress + ' registradas');
+  const progressBar = $('#journal-progress');
+  if (progressBar.value !== state.found) progressBar.value = state.found;
   setText(hudEls.temp, (2.1 + Math.max(0, 1 - d / 3000) * 1.6).toFixed(1) + ' °C');
 
   let zone = 'Lecho abisal';
