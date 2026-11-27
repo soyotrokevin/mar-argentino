@@ -687,30 +687,45 @@
     .mission-clock .value { font-size: 19px; }
     .top { gap: 10px; }
     .bottom { gap: 6px; width: 100%; align-items: flex-end; }
-    .bitacora-box { min-width: 0; width: 100%; max-width: none; pointer-events: none; }
-    .bitacora-head { pointer-events: auto; gap: 8px; width: fit-content; }
+    .bitacora-box {
+      position: relative; display: flex; flex-direction: row-reverse; align-items: center; gap: 10px;
+      min-width: 0; width: 100%; max-width: none; pointer-events: none;
+    }
+    .bitacora-head { pointer-events: auto; flex-shrink: 0; align-items: center; gap: 8px; margin: 0; }
     .bitacora-head > .label { display: none; }
-    #journal-toggle { display: inline-block; padding: 0 12px; min-height: 44px; color: white; font-size: 12px; }
-    #status { font-size: 12px; min-height: 0; margin: 2px 0; }
+    #journal-toggle {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 0 10px; min-height: 44px; color: white; font-size: 12px;
+    }
+    #journal-toggle svg {
+      width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    #journal-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+    #status { margin: 0 auto 0 0; min-height: 0; font-size: 12px; }
+    #status:empty { display: none; }
     .collection-dock { display: none; }
     .bitacora-box.journal-open .collection-dock {
-      display: flex; pointer-events: auto; padding: 6px; border-radius: 8px;
+      position: absolute; bottom: calc(100% + 6px); right: 0; width: min(100%, 330px);
+      display: flex; justify-content: flex-end; pointer-events: auto; padding: 8px; border-radius: 8px;
       background: rgba(2, 13, 19, .85); max-height: 26dvh; overflow-y: auto;
     }
     .spec-slot { min-height: 44px; }
     .mobile {
       display: grid; width: 100%; grid-template-columns: 1fr auto 1fr;
-      align-items: end; gap: 4px;
+      align-items: center; gap: 4px;
     }
     .mobile, .mobile button {
       touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     }
     .mobile svg { pointer-events: none; }
     .mobile #scan2 {
-      width: 68px; height: 60px; padding: 5px; align-content: center; gap: 2px;
-      background: #124e46; border-color: #a5eadd83;
+      width: 82px; height: 74px; padding: 5px; align-content: center; gap: 5px;
+      border-radius: 14px; color: #f0fff9; background: rgba(3, 23, 28, .74);
+      border-color: rgba(231, 250, 244, .58);
     }
-    .mobile #scan2.ready { background: #8ce2cc; color: #072823; }
+    .mobile #scan2 svg { width: 28px; height: 28px; }
+    .mobile #scan2.ready { border-color: #a5eadd; box-shadow: 0 0 0 2px #a5eadd2b; }
     .mobile #scan2 span { font-size: 10px; line-height: 1.15; letter-spacing: 0; }
     .touch-stick {
       position: relative; flex: none; width: clamp(88px, 27vw, 132px); justify-self: start; aspect-ratio: 1;
@@ -763,7 +778,6 @@
   }
   @media (orientation: landscape) and (max-height: 460px) and (max-width: 1000px), (orientation: landscape) and (max-height: 460px) and (pointer: coarse) {
     .touch-stick { width: clamp(88px, 28dvh, 112px); }
-    .bitacora-box { position: absolute; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 68px); left: 50%; width: min(60%, 300px); transform: translateX(-50%); }
   }
 </style>
 </head>
@@ -805,7 +819,7 @@
     <div class="bitacora-box">
       <div class="bitacora-head">
         <span class="label">Catálogo biológico</span>
-        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo</button>
+        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 7 3-3 3 3"/></svg></button>
         <span id="count" class="value">0 / 7</span>
       </div>
       <span id="status">Explorá la superficie verdosa y descendé hacia el abismo</span>
@@ -5501,9 +5515,15 @@ function update() {
   if (atBoundary) {
     setText(hudEls.status, 'Límite del área de exploración · cambiá de rumbo');
   } else if (state.time > statusUntil) {
-    setText(hudEls.status, active && canObserve
-      ? active.name + (recordedKinds.has(active.kind) ? ' — catalogado · abrí su lámina abajo' : (touchLayout.matches ? ' · listo para registrar' : ' — presioná [E] para registrar'))
-      : (state.found === TOTAL_SPECIES ? 'Catálogo completo · 7 / 7 especies registradas' : 'Explorá la superficie verdosa y descendé hacia el abismo'));
+    let hint = state.found === TOTAL_SPECIES
+      ? 'Catálogo completo · 7 / 7 especies registradas'
+      : 'Explorá la superficie verdosa y descendé hacia el abismo';
+    if (active && canObserve) {
+      hint = touchLayout.matches ? '' : active.name + (recordedKinds.has(active.kind)
+        ? ' — catalogado · abrí su lámina abajo'
+        : ' — presioná [E] para registrar');
+    }
+    setText(hudEls.status, hint);
   }
   telemetry(alt);
 }
