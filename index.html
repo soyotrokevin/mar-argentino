@@ -664,7 +664,7 @@
   }
   #initial-actions button:focus-visible, .controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  #journal-toggle, #help2 { display: none; }
+  #journal-toggle, #help2, .journal-header, .journal-backdrop { display: none; }
   @media (max-width: 760px), (pointer: coarse), (max-width: 1000px) and (max-height: 460px) {
     .hud {
       padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
@@ -698,36 +698,41 @@
     }
     .bitacora-head {
       position: fixed; top: 50%; right: max(12px, env(safe-area-inset-right));
-      transform: translateY(-50%); pointer-events: auto; align-items: center; gap: 6px; margin: 0;
+      transform: translateY(-50%); pointer-events: auto; flex-direction: column; align-items: center; gap: 6px; margin: 0;
     }
     .bitacora-head > .label { display: none; }
     #journal-toggle {
-      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-      padding: 0 10px; min-height: 44px; color: white; font-size: 12px;
+      display: grid; place-items: center; width: 44px; min-height: 94px; padding: 12px 0;
+      border-radius: 12px 4px 4px 12px; color: white; background: #03171cbd;
     }
-    #journal-toggle svg {
-      width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6;
-      stroke-linecap: round; stroke-linejoin: round;
-    }
-    #journal-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+    #journal-toggle span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .05em; }
     #status { margin: 0 auto 0 0; min-height: 0; font-size: 12px; }
     #status:empty { display: none; }
-    .collection-dock {
-      position: fixed; top: 50%; right: calc(max(12px, env(safe-area-inset-right)) + 130px);
-      width: min(220px, calc(100vw - max(12px, env(safe-area-inset-right)) - max(12px, env(safe-area-inset-left)) - 130px));
-      max-height: 55dvh; overflow-y: auto; overscroll-behavior: contain;
-      display: flex; justify-content: flex-end; padding: 8px; border-radius: 8px;
-      background: rgba(2, 13, 19, .92); visibility: hidden; opacity: 0; pointer-events: none;
-      transform: translate(10px, -50%);
-      transition: transform .18s ease, opacity .18s ease, visibility .18s;
+    .collection-dock, .journal-backdrop { display: none; }
+    .journal-open .journal-backdrop {
+      display: block; position: fixed; inset: 0; z-index: 6;
+      background: rgba(0, 7, 11, .72); pointer-events: auto;
     }
-    .bitacora-box.journal-open .collection-dock {
-      visibility: visible; opacity: 1; pointer-events: auto; transform: translate(0, -50%);
+    .journal-open .collection-dock {
+      position: fixed; z-index: 7;
+      inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+        max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+      align-content: start; padding: clamp(14px, 5vw, 24px);
+      overflow: auto; overscroll-behavior: contain; pointer-events: auto;
+      background: rgba(8, 23, 30, .96); border: 1px solid #ffffff26; border-radius: 14px;
+      box-shadow: 0 20px 60px #0008;
     }
-    @media (prefers-reduced-motion: reduce) {
-      .collection-dock { transition: none; }
+    .journal-header {
+      display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between;
+      gap: 8px; padding-bottom: 10px; border-bottom: 1px solid #ffffff26;
     }
-    .spec-slot { min-height: 44px; }
+    .journal-header h2 { margin: 0; color: white; font: 400 25px var(--font-serif); }
+    #journal-close { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; }
+    .collection-dock .spec-slot { min-height: 54px; padding: 8px 10px; border-radius: 9px; }
+    @media (min-width: 620px) {
+      .journal-open .collection-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
     .mobile {
       display: grid; width: 100%; grid-template-columns: 1fr auto 1fr;
       align-items: center; gap: 4px;
@@ -836,11 +841,16 @@
     <div class="bitacora-box">
       <div class="bitacora-head">
         <span class="label">Catálogo biológico</span>
-        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m7 3-3 3 3 3"/></svg></button>
+        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock"><span>Catálogo</span></button>
         <span id="count" class="value">0 / 7</span>
       </div>
       <span id="status">Explorá la superficie verdosa y descendé hacia el abismo</span>
+      <div id="journal-backdrop" class="journal-backdrop" aria-hidden="true"></div>
       <div class="collection-dock" id="collection-dock">
+        <header class="journal-header">
+          <h2 id="journal-title">Catálogo biológico</h2>
+          <button id="journal-close" type="button" aria-label="Cerrar catálogo">×</button>
+        </header>
         <button type="button" class="spec-slot" data-kind="whale"><span class="slot-dot"></span><span>Ballena</span></button>
         <button type="button" class="spec-slot" data-kind="jelly"><span class="slot-dot"></span><span>Medusa</span></button>
         <button type="button" class="spec-slot" data-kind="squid"><span class="slot-dot"></span><span>Calamar</span></button>
@@ -4462,6 +4472,7 @@ let specYaw = 0.4, specPitch = 0.18, specDragging = false, lastDragX = 0, lastDr
 function openSpecimenInspector(kind, capturedDepth) {
   const meta = SPECIES_DATA[kind];
   if (!meta) return;
+  closeJournal();
   currentSpecKind = kind;
   specOpen = true;
   xrayMode = false;
@@ -4592,6 +4603,7 @@ function endDive(won) {
   $('#result-modal').classList.remove('hidden');
 }
 function resetDiveState(targetMode) {
+  closeJournal();
   cancelPadCapture();
   gameEnded = false;
   gameMode = targetMode;
@@ -4793,6 +4805,7 @@ function switchSettingsTab(tab) {
   if (isJoy) refreshPadBindingLabels();
 }
 function openSettings(tab = 'general') {
+  closeJournal();
   state.playing = false;
   keys.clear();
   $('#initial-actions').hidden = true;
@@ -5038,6 +5051,8 @@ function pollGamepad() {
 
   if (gameEnded) {
     if (edge(0) || edge(9)) $('#restart').click();
+  } else if (journalOpen) {
+    if (edge(1) || edge(9)) closeJournal();
   } else if (edge(9)) {
     if (specOpen) closeSpecimenInspector();
     else if (state.playing) openSettings('general');
@@ -5063,10 +5078,11 @@ addEventListener('gamepaddisconnected', e => {
 addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (!e.repeat && e.code === 'KeyL') { audio.init(); toggleLight(); }
-  if (!e.repeat && e.code === 'KeyE') scan();
+  if (!e.repeat && e.code === 'KeyE' && !journalOpen) scan();
   if (!e.repeat && e.code === 'KeyM') toggleAudio();
   if (!e.repeat && e.code === 'Escape') {
     if (capturingBind) cancelPadCapture();
+    else if (journalOpen) closeJournal(true);
     else if (specOpen) closeSpecimenInspector();
     else if (state.playing) openSettings('general');
     else if (!$('#pause-actions').hidden) {
@@ -5145,10 +5161,46 @@ depthButtons.forEach(button => {
 });
 addEventListener('blur', clearTouchControls);
 document.addEventListener('visibilitychange', clearTouchControls);
-$('#journal-toggle').onclick = () => {
-  const expanded = $('.bitacora-box').classList.toggle('journal-open');
-  $('#journal-toggle').setAttribute('aria-expanded', String(expanded));
+let journalOpen = false;
+const journalToggle = $('#journal-toggle');
+const journalPanel = $('#collection-dock');
+const journalClose = $('#journal-close');
+function closeJournal(restoreFocus = false) {
+  if (!journalOpen) return;
+  journalOpen = false;
+  $('.bitacora-box').classList.remove('journal-open');
+  journalToggle.setAttribute('aria-expanded', 'false');
+  journalPanel.removeAttribute('role');
+  journalPanel.removeAttribute('aria-modal');
+  journalPanel.removeAttribute('aria-labelledby');
+  if (restoreFocus) journalToggle.focus({ preventScroll: true });
+}
+journalToggle.onclick = () => {
+  clearTouchControls();
+  keys.clear();
+  journalOpen = true;
+  $('.bitacora-box').classList.add('journal-open');
+  journalToggle.setAttribute('aria-expanded', 'true');
+  journalPanel.setAttribute('role', 'dialog');
+  journalPanel.setAttribute('aria-modal', 'true');
+  journalPanel.setAttribute('aria-labelledby', 'journal-title');
+  journalClose.focus({ preventScroll: true });
 };
+journalPanel.addEventListener('keydown', event => {
+  if (!journalOpen || event.key !== 'Tab') return;
+  const buttons = journalPanel.querySelectorAll('#journal-close, .spec-slot');
+  const lastButton = buttons[buttons.length - 1];
+  if (event.shiftKey && document.activeElement === journalClose) {
+    event.preventDefault();
+    lastButton.focus();
+  } else if (!event.shiftKey && document.activeElement === lastButton) {
+    event.preventDefault();
+    journalClose.focus();
+  }
+});
+journalClose.onclick = () => closeJournal(true);
+$('#journal-backdrop').onclick = () => closeJournal(true);
+touchLayout.addEventListener('change', () => { if (!touchLayout.matches) closeJournal(); });
 
 function resizeDiveCamera() {
   camera.aspect = innerWidth / innerHeight;
@@ -5550,12 +5602,12 @@ function frame(now) {
   pollGamepad();
   if ((!state.playing || specOpen) && (stickPointer !== null || depthPointers.size)) clearTouchControls();
   const elapsed = Math.max(0, now - last);
-  if (state.playing && gameMode === 'mission' && !specOpen && !document.hidden) {
+  if (state.playing && gameMode === 'mission' && !specOpen && !journalOpen && !document.hidden) {
     remainingSeconds = Math.max(0, remainingSeconds - elapsed / 1000);
     displayTimer();
     if (remainingSeconds <= 0) endDive(false);
   }
-  if (state.playing && !specOpen && !document.hidden) {
+  if (state.playing && !specOpen && !journalOpen && !document.hidden) {
     acc += Math.min(elapsed, 100);
     last = now;
     while (acc >= 16.667) {
