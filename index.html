@@ -673,9 +673,14 @@
     .expedition-note, .desktop { display: none; }
     .telemetry-bar { gap: 10px; align-items: center; }
     #help2 {
-      display: block; position: absolute; right: max(12px, env(safe-area-inset-right));
-      top: max(10px, env(safe-area-inset-top)); min-width: 44px; min-height: 44px;
-      padding: 4px; font-size: 20px;
+      display: grid; place-items: center; position: absolute; pointer-events: auto;
+      right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
+      width: 48px; height: 48px; padding: 0; color: #f0fff9; background: #03171cbd;
+      border-color: #e7faf45e;
+    }
+    #help2 svg {
+      width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.5;
+      stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
     }
     .tele-item { align-items: flex-start; }
     .value { font-size: 14px; }
@@ -688,10 +693,13 @@
     .top { gap: 10px; }
     .bottom { gap: 6px; width: 100%; align-items: flex-end; }
     .bitacora-box {
-      position: relative; display: flex; flex-direction: row-reverse; align-items: center; gap: 10px;
+      display: block;
       min-width: 0; width: 100%; max-width: none; pointer-events: none;
     }
-    .bitacora-head { pointer-events: auto; flex-shrink: 0; align-items: center; gap: 8px; margin: 0; }
+    .bitacora-head {
+      position: fixed; top: 50%; right: max(12px, env(safe-area-inset-right));
+      transform: translateY(-50%); pointer-events: auto; align-items: center; gap: 6px; margin: 0;
+    }
     .bitacora-head > .label { display: none; }
     #journal-toggle {
       display: inline-flex; align-items: center; justify-content: center; gap: 7px;
@@ -704,11 +712,20 @@
     #journal-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
     #status { margin: 0 auto 0 0; min-height: 0; font-size: 12px; }
     #status:empty { display: none; }
-    .collection-dock { display: none; }
+    .collection-dock {
+      position: fixed; top: 50%; right: calc(max(12px, env(safe-area-inset-right)) + 130px);
+      width: min(220px, calc(100vw - max(12px, env(safe-area-inset-right)) - max(12px, env(safe-area-inset-left)) - 130px));
+      max-height: 55dvh; overflow-y: auto; overscroll-behavior: contain;
+      display: flex; justify-content: flex-end; padding: 8px; border-radius: 8px;
+      background: rgba(2, 13, 19, .92); visibility: hidden; opacity: 0; pointer-events: none;
+      transform: translate(10px, -50%);
+      transition: transform .18s ease, opacity .18s ease, visibility .18s;
+    }
     .bitacora-box.journal-open .collection-dock {
-      position: absolute; bottom: calc(100% + 6px); right: 0; width: min(100%, 330px);
-      display: flex; justify-content: flex-end; pointer-events: auto; padding: 8px; border-radius: 8px;
-      background: rgba(2, 13, 19, .85); max-height: 26dvh; overflow-y: auto;
+      visibility: visible; opacity: 1; pointer-events: auto; transform: translate(0, -50%);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .collection-dock { transition: none; }
     }
     .spec-slot { min-height: 44px; }
     .mobile {
@@ -806,7 +823,7 @@
     </div>
 
     <div class="telemetry-bar">
-      <button id="help2" aria-label="Ajustes" title="Ajustes">⚙</button>
+      <button id="help2" type="button" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h5m4 0h7M4 12h10m4 0h2M4 18h2m4 0h10"/><circle cx="11" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></button>
       <div class="tele-item"><span class="label">Profundidad</span><span id="depth" class="value">0 m</span></div>
       <div class="tele-item"><span class="label">Rumbo</span><span id="heading" class="value">000°</span></div>
       <div class="tele-item"><span class="label">Temp.</span><span id="temp" class="value">3.7 °C</span></div>
@@ -819,7 +836,7 @@
     <div class="bitacora-box">
       <div class="bitacora-head">
         <span class="label">Catálogo biológico</span>
-        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 7 3-3 3 3"/></svg></button>
+        <button id="journal-toggle" type="button" aria-expanded="false" aria-controls="collection-dock">Catálogo<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m7 3-3 3 3 3"/></svg></button>
         <span id="count" class="value">0 / 7</span>
       </div>
       <span id="status">Explorá la superficie verdosa y descendé hacia el abismo</span>
