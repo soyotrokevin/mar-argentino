@@ -265,7 +265,6 @@
     border-color: rgba(255, 255, 255, 0.42);
     color: var(--ink);
   }
-  .mobile { display: none; }
 
   /* Minimal Text Target Label (no circle or frame) */
   #reticle {
@@ -294,21 +293,6 @@
     font-weight: 500;
     line-height: 1.2;
   }
-  .reticle-meta {
-    color: var(--ink-soft);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    margin-top: 2px;
-  }
-  .reticle-action {
-    margin-top: 3px;
-    color: var(--ink);
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    opacity: 0.9;
-  }
-
   /* Minimalist 3D Specimen Sheet */
   #specimen-card {
     position: fixed;
@@ -664,24 +648,117 @@
   }
   #initial-actions button:focus-visible, .controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  #journal-toggle, #help2, .journal-header, .journal-backdrop, .species-icon { display: none; }
+  #help2 {
+    display: grid; place-items: center; position: absolute; pointer-events: auto;
+    right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
+    width: 48px; height: 48px; padding: 0; color: #f0fff9; background: #03171cbd;
+    border-color: #e7faf45e;
+  }
+  #help2 svg {
+    width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+  }
+  .bitacora-box {
+    display: block;
+    min-width: 0; width: 100%; max-width: none; pointer-events: none;
+  }
+  .bitacora-head {
+    position: fixed; top: 50%; right: max(12px, env(safe-area-inset-right));
+    transform: translateY(-50%); pointer-events: auto; flex-direction: column; align-items: center; gap: 6px; margin: 0;
+  }
+  .bitacora-head > .label { display: none; }
+  #journal-toggle {
+    display: grid; place-items: center; width: 44px; min-height: 94px; padding: 12px 0;
+    border-radius: 12px 4px 4px 12px; color: white; background: #03171cbd;
+  }
+  #journal-toggle span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .05em; }
+  #status { margin: 0 auto 0 0; min-height: 0; font-size: 12px; }
+  #status:empty { display: none; }
+  .collection-dock, .journal-backdrop { display: none; }
+  .journal-open .journal-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 6;
+    background: rgba(0, 7, 11, .72); pointer-events: auto;
+  }
+  .journal-open .collection-dock {
+    position: fixed; z-index: 7;
+    inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+    align-content: start; padding: clamp(14px, 5vw, 24px);
+    overflow: auto; overscroll-behavior: contain; pointer-events: auto;
+    background: radial-gradient(ellipse at top right, #164136, transparent 58%), #091a22;
+    border: 1px solid #ffffff26; border-radius: 14px;
+    box-shadow: 0 20px 60px #0008;
+  }
+  .journal-header {
+    display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto;
+    align-items: center; gap: 10px 12px; padding-bottom: 10px;
+  }
+  .journal-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
+  .journal-header h2 { margin: 0; color: white; font: 400 clamp(26px, 8vw, 36px) var(--font-serif); }
+  #journal-progress-label { color: #a9c8bf; font-size: 12px; font-variant-numeric: tabular-nums; }
+  #journal-progress {
+    grid-column: 1 / -1; width: 100%; height: 5px; color: #6fe5a5; accent-color: #6fe5a5;
+  }
+  #journal-close { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; }
+  .collection-dock .spec-slot {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; min-width: 0; min-height: 92px; padding: 9px; border-radius: 12px;
+    background: #0c2129; border-color: #91b4b132; color: #a1b8bb; text-align: center;
+    font-size: 12px;
+  }
+  .collection-dock .spec-slot[data-kind="whale"] {
+    grid-column: span 2; flex-direction: row; gap: 14px;
+  }
+  .collection-dock .spec-slot .slot-dot {
+    position: absolute; top: 10px; right: 10px; width: 6px; height: 6px;
+  }
+  .collection-dock .species-icon {
+    display: block; width: 50px; height: 42px; fill: none; stroke: currentColor;
+    stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; opacity: .8;
+  }
+  .collection-dock .spec-slot[data-kind="whale"] .species-icon { width: 77px; }
+  .collection-dock .spec-slot.unlocked {
+    background: linear-gradient(150deg, #17664c, #0d3d32); color: #e9fff2;
+    border-color: #63d698; box-shadow: inset 0 0 18px #72eda31a;
+  }
+  .collection-dock .spec-slot.unlocked .species-icon { color: #a5ffca; opacity: 1; }
+  .collection-dock .spec-slot.unlocked .slot-dot { background: #83f2ab; box-shadow: 0 0 8px #67d69c; }
+  .collection-dock .spec-slot.unlocked:hover { filter: brightness(1.12); }
+  @media (min-width: 620px) {
+    .journal-open .collection-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  #scan2 {
+    width: 82px; height: 74px; padding: 5px; align-content: center; gap: 5px;
+    border-radius: 14px; color: #f0fff9; background: rgba(3, 23, 28, .74);
+    border-color: rgba(231, 250, 244, .58);
+  }
+  #scan2 svg { width: 28px; height: 28px; }
+  #scan2.ready { border-color: #a5eadd; box-shadow: 0 0 0 2px #a5eadd2b; }
+  #scan2 span { font-size: 10px; line-height: 1.15; letter-spacing: 0; }
+  body:has(.journal-open) #reticle { opacity: 0; }
+  .dive-controls {
+    display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center; gap: 4px;
+  }
+  .dive-controls > :first-child { grid-column: 1; }
+  #scan2 { grid-column: 2; }
+  .touch-actions { grid-column: 3; justify-self: end; display: flex; gap: 8px; }
+  .touch-stick, .touch-actions [data-depth] { display: none; }
+  .top { flex-direction: column; gap: 8px; }
+  .mission-clock { padding: 2px 12px; border-radius: 8px; background: #051c21b3; }
+  @media (min-width: 761px) and (pointer: fine) and (min-height: 461px) {
+    #help2 { right: 30px; top: 24px; }
+    .bitacora-head { right: 30px; }
+    .journal-open .collection-dock { inset: max(28px, calc((100vh - 620px) / 2)) max(30px, calc((100vw - 840px) / 2)); }
+  }
   @media (max-width: 760px), (pointer: coarse), (max-width: 1000px) and (max-height: 460px) {
     .hud {
       padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
         max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
     }
-    .expedition-note, .desktop { display: none; }
+    .expedition-note { display: none; }
     .telemetry-bar { gap: 10px; align-items: center; }
-    #help2 {
-      display: grid; place-items: center; position: absolute; pointer-events: auto;
-      right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
-      width: 48px; height: 48px; padding: 0; color: #f0fff9; background: #03171cbd;
-      border-color: #e7faf45e;
-    }
-    #help2 svg {
-      width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.5;
-      stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
-    }
     .tele-item { align-items: flex-start; }
     .value { font-size: 14px; }
     .mission-clock {
@@ -692,94 +769,12 @@
     .mission-clock .value { font-size: 19px; }
     .top { gap: 10px; }
     .bottom { gap: 6px; width: 100%; align-items: flex-end; }
-    .bitacora-box {
-      display: block;
-      min-width: 0; width: 100%; max-width: none; pointer-events: none;
-    }
-    .bitacora-head {
-      position: fixed; top: 50%; right: max(12px, env(safe-area-inset-right));
-      transform: translateY(-50%); pointer-events: auto; flex-direction: column; align-items: center; gap: 6px; margin: 0;
-    }
-    .bitacora-head > .label { display: none; }
-    #journal-toggle {
-      display: grid; place-items: center; width: 44px; min-height: 94px; padding: 12px 0;
-      border-radius: 12px 4px 4px 12px; color: white; background: #03171cbd;
-    }
-    #journal-toggle span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .05em; }
-    #status { margin: 0 auto 0 0; min-height: 0; font-size: 12px; }
-    #status:empty { display: none; }
-    .collection-dock, .journal-backdrop { display: none; }
-    .journal-open .journal-backdrop {
-      display: block; position: fixed; inset: 0; z-index: 6;
-      background: rgba(0, 7, 11, .72); pointer-events: auto;
-    }
-    .journal-open .collection-dock {
-      position: fixed; z-index: 7;
-      inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
-        max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
-      align-content: start; padding: clamp(14px, 5vw, 24px);
-      overflow: auto; overscroll-behavior: contain; pointer-events: auto;
-      background: radial-gradient(ellipse at top right, #164136, transparent 58%), #091a22;
-      border: 1px solid #ffffff26; border-radius: 14px;
-      box-shadow: 0 20px 60px #0008;
-    }
-    .journal-header {
-      display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto;
-      align-items: center; gap: 10px 12px; padding-bottom: 10px;
-    }
-    .journal-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
-    .journal-header h2 { margin: 0; color: white; font: 400 clamp(26px, 8vw, 36px) var(--font-serif); }
-    #journal-progress-label { color: #a9c8bf; font-size: 12px; font-variant-numeric: tabular-nums; }
-    #journal-progress {
-      grid-column: 1 / -1; width: 100%; height: 5px; color: #6fe5a5; accent-color: #6fe5a5;
-    }
-    #journal-close { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; }
-    .collection-dock .spec-slot {
-      position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 6px; min-width: 0; min-height: 92px; padding: 9px; border-radius: 12px;
-      background: #0c2129; border-color: #91b4b132; color: #a1b8bb; text-align: center;
-      font-size: 12px;
-    }
-    .collection-dock .spec-slot[data-kind="whale"] {
-      grid-column: span 2; flex-direction: row; gap: 14px;
-    }
-    .collection-dock .spec-slot .slot-dot {
-      position: absolute; top: 10px; right: 10px; width: 6px; height: 6px;
-    }
-    .collection-dock .species-icon {
-      display: block; width: 50px; height: 42px; fill: none; stroke: currentColor;
-      stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; opacity: .8;
-    }
-    .collection-dock .spec-slot[data-kind="whale"] .species-icon { width: 77px; }
-    .collection-dock .spec-slot.unlocked {
-      background: linear-gradient(150deg, #17664c, #0d3d32); color: #e9fff2;
-      border-color: #63d698; box-shadow: inset 0 0 18px #72eda31a;
-    }
-    .collection-dock .spec-slot.unlocked .species-icon { color: #a5ffca; opacity: 1; }
-    .collection-dock .spec-slot.unlocked .slot-dot { background: #83f2ab; box-shadow: 0 0 8px #67d69c; }
-    .collection-dock .spec-slot.unlocked:hover { filter: brightness(1.12); }
-    @media (min-width: 620px) {
-      .journal-open .collection-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    }
-    .mobile {
-      display: grid; width: 100%; grid-template-columns: 1fr auto 1fr;
-      align-items: center; gap: 4px;
-    }
-    .mobile, .mobile button {
+    .dive-controls, .dive-controls button {
       touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     }
-    .mobile svg { pointer-events: none; }
-    .mobile #scan2 {
-      width: 82px; height: 74px; padding: 5px; align-content: center; gap: 5px;
-      border-radius: 14px; color: #f0fff9; background: rgba(3, 23, 28, .74);
-      border-color: rgba(231, 250, 244, .58);
-    }
-    .mobile #scan2 svg { width: 28px; height: 28px; }
-    .mobile #scan2.ready { border-color: #a5eadd; box-shadow: 0 0 0 2px #a5eadd2b; }
-    .mobile #scan2 span { font-size: 10px; line-height: 1.15; letter-spacing: 0; }
+    .dive-controls svg { pointer-events: none; }
     .touch-stick {
-      position: relative; flex: none; width: clamp(88px, 27vw, 132px); justify-self: start; aspect-ratio: 1;
+      display: block; position: relative; flex: none; width: clamp(88px, 27vw, 132px); justify-self: start; aspect-ratio: 1;
       border-radius: 50%; border: 1px solid #ffffff65; background: #051c21b3; touch-action: none;
     }
     .touch-stick::before, .touch-stick::after {
@@ -825,7 +820,6 @@
     .card h1 { font-size: 28px; }
     .reticle-tag { width: 200px; white-space: normal; }
     #reticle.is-above { transform: translate(-50%, calc(-100% - 10px)); }
-    body:has(.journal-open) #reticle { opacity: 0; }
   }
   @media (orientation: landscape) and (max-height: 460px) and (max-width: 1000px), (orientation: landscape) and (max-height: 460px) and (pointer: coarse) {
     .touch-stick { width: clamp(88px, 28dvh, 112px); }
@@ -840,8 +834,6 @@
 <div id="reticle">
   <div class="reticle-tag">
     <div class="reticle-name" id="ret-name">Especie</div>
-    <div class="reticle-meta" id="ret-meta">0.0 m</div>
-    <div class="reticle-action" id="ret-action">[E] Registrar</div>
   </div>
 </div>
 
@@ -894,16 +886,9 @@
       </div>
     </div>
 
-    <div class="controls desktop">
-      <button id="lamp" class="icon-control is-on" aria-label="Apagar luces (L)" title="Apagar luces (L)" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5l4-3v12l-4-3H4z"/><path d="M16 9l3-2M16 12h4M16 15l3 2"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
-      <button id="scan" class="icon-control capture-control" aria-label="Registrar especie (E)" title="Registrar especie (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg></button>
-      <button id="audioBtn" class="icon-control is-on" aria-label="Silenciar sonido (M)" title="Silenciar sonido (M)" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h4l5-4v12l-5-4H4z"/><g class="sound-waves"><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></g><path class="off-mark" d="M16 10l4 4m0-4l-4 4"/></svg></button>
-      <button id="help">Ajustes</button>
-    </div>
-
-    <div class="controls mobile">
+    <div class="controls dive-controls">
       <div class="touch-stick" id="touch-stick" role="group" aria-label="Palanca táctil para avanzar, retroceder y girar"><span class="touch-knob"></span></div>
-      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg><span aria-hidden="true">Registrar</span></button>
+      <button id="scan2" class="icon-control capture-control" aria-label="Registrar especie" title="Registrar especie (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l1.5-2h7L17 8h4v10H3z"/><circle cx="12" cy="13" r="3.2"/><path d="M18 10h.01"/></svg><span aria-hidden="true">Registrar</span></button>
       <div class="touch-actions">
         <button id="lamp2" class="icon-control is-on" aria-label="Apagar luces" title="Apagar luces" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h7l3-3v10l-3-3H4zM16 8l4-2M17 12h4M16 16l4 2"/><path d="M7 10v4"/><path class="off-mark" d="M3 3l18 18"/></svg></button>
         <button type="button" data-depth="-1" aria-label="Ascender"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 14l7-7 7 7"/></svg></button>
@@ -4681,6 +4666,7 @@ function resetDiveState(targetMode) {
   camera.position.set(0, SURFACE_Y - 22 / 19.6, 10);
   camera.rotation.set(-0.14, 0, 0);
   hudEls.reticle.classList.remove('visible');
+  updateScanButton(null);
   setText(hudEls.status, 'Explorá la superficie verdosa y descendé hacia el abismo');
   updateWaterOptics(state.depth, 0);
   telemetry();
@@ -4708,11 +4694,10 @@ const hudEls = {
   status: $('#status'),
   reticle: $('#reticle'),
   retName: $('#ret-name'),
-  retMeta: $('#ret-meta'),
-  retAction: $('#ret-action'),
-  lamp: $('#lamp'),
-  audioBtn: $('#audioBtn'),
-  audioBtn2: $('#audioBtn2'),
+  scan: $('#scan2'),
+  scanLabel: $('#scan2 span'),
+  lamp: $('#lamp2'),
+  audioBtn: $('#audioBtn2'),
   flash: $('#flash-overlay')
 };
 
@@ -4754,12 +4739,11 @@ function toggleLight(silent = false) {
   });
   snowMaterial.uniforms.enabled.value = state.light ? 1 : 0;
   coneMat.uniforms.uEnabled.value = state.light ? 1 : 0;
-  for (const button of [hudEls.lamp, $('#lamp2')]) {
-    button.classList.toggle('is-on', state.light);
-    button.setAttribute('aria-pressed', String(state.light));
-    button.setAttribute('aria-label', state.light ? 'Apagar luces' : 'Encender luces');
-    button.title = state.light ? 'Apagar luces (L)' : 'Encender luces (L)';
-  }
+  const button = hudEls.lamp;
+  button.classList.toggle('is-on', state.light);
+  button.setAttribute('aria-pressed', String(state.light));
+  button.setAttribute('aria-label', state.light ? 'Apagar luces' : 'Encender luces');
+  button.title = state.light ? 'Apagar luces (L)' : 'Encender luces (L)';
   if (!silent) audio.playLightSwitch(state.light);
   telemetry();
 }
@@ -4767,12 +4751,29 @@ function toggleLight(silent = false) {
 function toggleAudio() {
   audio.init();
   const isOn = audio.toggleMute();
-  for (const button of [hudEls.audioBtn, hudEls.audioBtn2]) {
-    button.classList.toggle('is-on', isOn);
-    button.setAttribute('aria-pressed', String(isOn));
-    button.setAttribute('aria-label', isOn ? 'Silenciar sonido' : 'Activar sonido');
-    button.title = isOn ? 'Silenciar sonido (M)' : 'Activar sonido (M)';
+  const button = hudEls.audioBtn;
+  button.classList.toggle('is-on', isOn);
+  button.setAttribute('aria-pressed', String(isOn));
+  button.setAttribute('aria-label', isOn ? 'Silenciar sonido' : 'Activar sonido');
+  button.title = isOn ? 'Silenciar sonido (M)' : 'Activar sonido (M)';
+}
+
+let scanButtonReady = false;
+let scanButtonReview = false;
+function updateScanButton(target) {
+  const ready = Boolean(target);
+  if (ready !== scanButtonReady) {
+    scanButtonReady = ready;
+    hudEls.scan.classList.toggle('ready', ready);
   }
+  const review = ready && recordedKinds.has(target.kind);
+  if (review === scanButtonReview) return;
+  scanButtonReview = review;
+  const action = review ? 'Revisar' : 'Registrar';
+  setText(hudEls.scanLabel, action);
+  hudEls.scan.title = action + ' especie';
+  hudEls.scan.setAttribute('aria-label', hudEls.scan.title);
+  hudEls.scan.title += ' (E)';
 }
 
 function scan() {
@@ -4791,6 +4792,7 @@ function scan() {
     recorded.add(active.name);
     recordedKinds.add(active.kind);
     state.found = recordedKinds.size;
+    updateScanButton(active);
 
     // Crisp xenon photographic flash & strobe discharge
     state.strobeIntensity = 1.0;
@@ -4827,9 +4829,9 @@ function scan() {
   }
 }
 
-$('#lamp').onclick = $('#lamp2').onclick = () => { audio.init(); toggleLight(); };
-$('#scan').onclick = $('#scan2').onclick = scan;
-$('#audioBtn').onclick = $('#audioBtn2').onclick = toggleAudio;
+$('#lamp2').onclick = () => { audio.init(); toggleLight(); };
+$('#scan2').onclick = scan;
+$('#audioBtn2').onclick = toggleAudio;
 let activeSettingsTab = 'general';
 function switchSettingsTab(tab) {
   activeSettingsTab = tab === 'joystick' ? 'joystick' : 'general';
@@ -4852,7 +4854,7 @@ function openSettings(tab = 'general') {
   switchSettingsTab(tab);
   $('#modal').classList.remove('hidden');
 }
-$('#help').onclick = $('#help2').onclick = () => openSettings('general');
+$('#help2').onclick = () => openSettings('general');
 $('#goto-joystick').onclick = () => switchSettingsTab('joystick');
 $('#tab-btn-general').onclick = () => switchSettingsTab('general');
 $('#tab-btn-joystick').onclick = () => switchSettingsTab('joystick');
@@ -5237,7 +5239,6 @@ journalPanel.addEventListener('keydown', event => {
 });
 journalClose.onclick = () => closeJournal(true);
 $('#journal-backdrop').onclick = () => closeJournal(true);
-touchLayout.addEventListener('change', () => { if (!touchLayout.matches) closeJournal(); });
 
 function resizeDiveCamera() {
   camera.aspect = innerWidth / innerHeight;
@@ -5410,7 +5411,6 @@ function update() {
   const fx = -Math.sin(state.heading), fz = -Math.cos(state.heading);
   const rx = -fz, rz = fx;
   active = null;
-  let best = Infinity;
   let bestTargetScore = Infinity;
 
   for (const a of fauna) {
@@ -5506,7 +5506,6 @@ function update() {
       - (a === prevActive ? 0.035 : 0);
     if (score < bestTargetScore) {
       active = a;
-      best = dist;
       bestTargetScore = score;
     }
   }
@@ -5519,7 +5518,7 @@ function update() {
     else audio.playTargetLock();
   }
   prevActive = active;
-  $('#scan2').classList.toggle('ready', Boolean(active && canObserve && !recordedKinds.has(active.kind)));
+  updateScanButton(canObserve ? active : null);
 
   // Dual yellow-green laser projection (suppressed above water)
   const beamVisible = state.light && airBlend <= 0.55;
@@ -5606,11 +5605,7 @@ function update() {
       reticle.style.top = sy + 'px';
       reticle.classList.toggle('is-above', touchLayout.matches && sy > innerHeight * 0.58);
       reticle.classList.add('visible');
-      const isRec = recordedKinds.has(active.kind);
-      reticle.classList.toggle('recorded', isRec);
       setText(hudEls.retName, active.name);
-      setText(hudEls.retMeta, best.toFixed(1) + ' m · ' + SPECIES_DATA[active.kind].size);
-      setText(hudEls.retAction, isRec ? (touchLayout.matches ? 'Catalogado · tocá la cámara para revisar' : 'Catalogado · [E] Revisar') : (touchLayout.matches ? 'Tocá la cámara para registrar' : '[E] Registrar espécimen'));
     } else {
       reticle.classList.remove('visible');
     }
@@ -5621,14 +5616,9 @@ function update() {
   if (atBoundary) {
     setText(hudEls.status, 'Límite del área de exploración · cambiá de rumbo');
   } else if (state.time > statusUntil) {
-    let hint = state.found === TOTAL_SPECIES
+    const hint = active && canObserve ? '' : state.found === TOTAL_SPECIES
       ? 'Catálogo completo · 7 / 7 especies registradas'
       : 'Explorá la superficie verdosa y descendé hacia el abismo';
-    if (active && canObserve) {
-      hint = touchLayout.matches ? '' : active.name + (recordedKinds.has(active.kind)
-        ? ' — catalogado · abrí su lámina abajo'
-        : ' — presioná [E] para registrar');
-    }
     setText(hudEls.status, hint);
   }
   telemetry(alt);
